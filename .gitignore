@@ -30,3 +30,17 @@
 *.exe
 *.out
 *.app
+/.vs/grisu_exact/v16
+/x64
+/case_e_positive.png
+/get_precision_upper_bound_64_positive.m
+/get_precision_upper_bound_64_negative.m
+/get_precision_upper_bound_32_positive.m
+/get_precision_upper_bound_32_negative.m
+/binary32_negative_k.csv
+/minmax_euclid_v2.m
+/minmax_euclid.m
+/grisu_exact.vcxproj.user
+/grisu_exact.vcxproj.filters
+/grisu_exact.vcxproj
+/grisu_exact.sln
