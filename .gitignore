@@ -44,3 +44,8 @@
 /grisu_exact.vcxproj.filters
 /grisu_exact.vcxproj
 /grisu_exact.sln
+/binary32_generated_cache.txt
+/binary32_positive_k.csv
+/binary64_generated_cache.txt
+/binary64_negative_k.csv
+/binary64_positive_k.csv

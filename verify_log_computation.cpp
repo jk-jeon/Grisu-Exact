@@ -13,7 +13,7 @@ void verify_log_computation()
 
 		// Verify the lower bits can never overflow
 		if (lower + 0x7de8 >= 0x100000000) {
-			std::cout << "ceil_log10_pow2: overflow detected (e: " << e << ")\n";
+			std::cout << "ceil_log10_pow2: overflow detected [e = " << e << "]\n";
 			succeeded = false;
 		}
 
@@ -21,13 +21,13 @@ void verify_log_computation()
 		if (int(std::ceil(e * std::log10(2))) !=
 			jkj::grisu_exact_detail::ceil_log10_pow2(e))
 		{
-			std::cout << "ceil_log10_pow2: mismatch! (e: " << e << ")\n";
+			std::cout << "ceil_log10_pow2: mismatch! [e = " << e << "]\n";
 			succeeded = false;
 		}
 		if (int(std::ceil(-e * std::log10(2))) !=
 			jkj::grisu_exact_detail::ceil_log10_pow2(-e))
 		{
-			std::cout << "ceil_log10_pow2: mismatch! (e: " << e << ")\n";
+			std::cout << "ceil_log10_pow2: mismatch! [e = " << e << "]\n";
 			succeeded = false;
 		}
 	}
@@ -42,7 +42,7 @@ void verify_log_computation()
 
 		// Verify the lower bits can never overflow
 		if (lower + 0x346f >= 0x100000000) {
-			std::cout << "floor_log2_pow10: overflow detected (e: " << e << ")\n";
+			std::cout << "floor_log2_pow10: overflow detected [e = " << e << "]\n";
 			succeeded = false;
 		}
 
@@ -50,13 +50,13 @@ void verify_log_computation()
 		if (int(std::floor(e * std::log2(10))) !=
 			jkj::grisu_exact_detail::floor_log2_pow10(e))
 		{
-			std::cout << "floor_log2_pow10: mismatch! (e: " << e << ")\n";
+			std::cout << "floor_log2_pow10: mismatch! [e = " << e << "]\n";
 			succeeded = false;
 		}
 		if (int(std::floor(-e * std::log2(10))) !=
 			jkj::grisu_exact_detail::floor_log2_pow10(-e))
 		{
-			std::cout << "floor_log2_pow10: mismatch! (e: " << e << ")\n";
+			std::cout << "floor_log2_pow10: mismatch! [e = " << e << "]\n";
 			succeeded = false;
 		}
 	}

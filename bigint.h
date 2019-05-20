@@ -1,16 +1,16 @@
 #ifndef __JKJ_GRISU_EXACT_BIGINT__
 #define __JKJ_GRISU_EXACT_BIGINT__
 
+////////////////////////////////////////////////////////////////////////////////////////
+// This file is only used for cache generation, and need not be included for real use
+////////////////////////////////////////////////////////////////////////////////////////
+
 #include "grisu_exact.h"
 #include <algorithm>
 #include <cassert>
 
 namespace jkj {
 	namespace grisu_exact_detail {
-		////////////////////////////////////////////////////////////////////////////////////////
-		// This file is only used for cache generation, and need not be included for real use
-		////////////////////////////////////////////////////////////////////////////////////////
-
 		constexpr std::size_t log2p1(std::uint64_t x) noexcept {
 			// C++20 std::log2p1 is not yet supported
 			//return std::log2p1(x);
@@ -97,11 +97,11 @@ namespace jkj {
 				if (element_pos_offset > 0) {
 					number_of_multiplications = element_pos_offset * element_number_of_bits;
 
-					std::move_backward(elements.begin(),
+					std::move_backward(std::begin(elements),
 						std::begin(elements) + leading_one_pos.element_pos + 1,
 						std::begin(elements) + n.leading_one_pos.element_pos + 1);
 
-					std::fill_n(elements.begin(), element_pos_offset, 0);
+					std::fill_n(std::begin(elements), element_pos_offset, 0);
 
 					leading_one_pos.element_pos += element_pos_offset;
 				}
@@ -228,60 +228,6 @@ namespace jkj {
 
 				assert(leading_one_pos.element_pos != array_size);
 				assert(leading_one_pos.bit_pos <= element_number_of_bits);
-			}
-
-			// Increment
-			constexpr bigint_impl& operator++() & {
-				std::size_t idx = 0;
-				unsigned int carry;
-				do {
-					assert(idx < array_size);
-					carry = (++elements[idx++] == 0) ? 1 : 0;
-				} while (carry != 0);
-
-				if (idx == leading_one_pos.element_pos + 1) {
-					leading_one_pos.bit_pos = log2p1(elements[leading_one_pos.element_pos]);
-				}
-				else if (idx > leading_one_pos.element_pos + 1) {
-					++leading_one_pos.element_pos;
-					leading_one_pos.bit_pos = 1;
-				}
-
-				return *this;
-			}
-
-			// Left-shift
-			// Precondition: shft + leading_one_pos.bit_pos <= element_number_of_bits,
-			//               0 < shft < element_number_of_bits.
-			constexpr bigint_impl& operator<<=(std::size_t shft) & {
-				assert(shft + leading_one_pos.bit_pos <= element_number_of_bits);
-				assert(shft > 0 && shft < element_number_of_bits);
-				leading_one_pos.bit_pos += shft;
-
-				for (std::size_t idx = leading_one_pos.element_pos; idx > 0; --idx) {
-					elements[idx] <<= shft;
-					elements[idx] |= (elements[idx - 1] >> (element_number_of_bits - shft));
-				}
-				elements[0] <<= shft;
-
-				return *this;
-			}
-
-			// Right-shift
-			// Precondition: leading_one_pos.bit_pos >= shft,
-			//               0 < shft < element_number_of_bits.
-			constexpr bigint_impl& operator>>=(std::size_t shft) & {
-				assert(leading_one_pos.bit_pos >= shft);
-				assert(shft > 0 && shft < element_number_of_bits);
-				leading_one_pos.bit_pos -= shft;
-
-				for (std::size_t idx = 0; idx < leading_one_pos.element_pos; ++idx) {
-					elements[idx] >>= shft;
-					elements[idx] |= (elements[idx + 1] << (element_number_of_bits - shft));
-				}
-				elements[leading_one_pos.element_pos] >>= shft;
-
-				return *this;
 			}
 
 		private:
@@ -529,54 +475,54 @@ namespace jkj {
 			friend bigint_impl operator*(bigint_impl const& x, bigint_impl const& y) {
 				// Leaky overflow check
 				assert(x.leading_one_pos.element_pos + y.leading_one_pos.element_pos < array_size);
-
-				bigint_impl temp, result;
-				temp.leading_one_pos.element_pos = 0;
-
-				auto calculate_single = [&x](element_type n, bigint_impl& result) {
-					bigint_base::element_type carry = 0;
+				
+				std::size_t single_result_leading_one_pos;
+				auto calculate_single = [&](element_type n, auto& result) {
+					bigint_base::element_type mul_carry = 0;
 					for (std::size_t idx = 0; idx <= x.leading_one_pos.element_pos; ++idx) {
 						auto mul = umul128(x.elements[idx], n);
-						result.elements[idx] = mul.low() + carry;
-						carry = mul.high() + (result.elements[idx] < mul.low() ? 1 : 0);
+						result[idx] = mul.low() + mul_carry;
+						mul_carry = mul.high() + (result[idx] < mul.low() ? 1 : 0);
 					}
-					if (carry != 0) {
-						result.leading_one_pos.element_pos = x.leading_one_pos.element_pos + 1;
-						result.elements[result.leading_one_pos.element_pos] = carry;
+					if (mul_carry != 0) {
+						single_result_leading_one_pos = x.leading_one_pos.element_pos + 1;
+						result[single_result_leading_one_pos] = mul_carry;
 					}
 					else {
-						result.leading_one_pos.element_pos = x.leading_one_pos.element_pos;
+						single_result_leading_one_pos = x.leading_one_pos.element_pos;
 					}
 				};
 
+				decltype(x.elements) temp;
+				bigint_impl result;
+
 				// First iteration
-				calculate_single(y.elements[0], result);
+				calculate_single(y.elements[0], result.elements);
+				std::fill(std::begin(result.elements) + single_result_leading_one_pos + 1,
+					std::end(result.elements), 0);
 
 				// Remaining iterations
 				for (std::size_t i = 1; i <= y.leading_one_pos.element_pos; ++i) {
 					calculate_single(y.elements[i], temp);
 
 					// Accumulate
-					result.elements[i] += temp.elements[0];
-					unsigned int carry = result.elements[i] < temp.elements[0] ? 1 : 0;
-					for (std::size_t j = 1; j <= temp.leading_one_pos.element_pos; ++j) {
-						auto with_carry = temp.elements[j] + carry;
-						auto first_carry = with_carry < temp.elements[j] ? 1 : 0;
+					result.elements[i] += temp[0];
+					unsigned int add_carry = result.elements[i] < temp[0] ? 1 : 0;
+					for (std::size_t j = 1; j <= single_result_leading_one_pos; ++j) {
+						auto with_carry = temp[j] + add_carry;
+						auto first_carry = with_carry < temp[j] ? 1 : 0;
 
 						result.elements[i + j] += with_carry;
-						carry = first_carry | ((result.elements[i + j] < with_carry) ? 1 : 0);
+						add_carry = first_carry | ((result.elements[i + j] < with_carry) ? 1 : 0);
 					}
 
-					assert(carry == 0);
+					assert(add_carry == 0);
 				}
 
 				result.leading_one_pos.element_pos = y.leading_one_pos.element_pos +
-					temp.leading_one_pos.element_pos;
+					single_result_leading_one_pos;
 				result.leading_one_pos.bit_pos =
 					log2p1(result.elements[result.leading_one_pos.element_pos]);
-
-				std::fill(std::begin(result.elements) + result.leading_one_pos.element_pos + 1,
-					std::end(result.elements), 0);
 
 				return result;
 			}
