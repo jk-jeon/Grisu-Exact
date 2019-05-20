@@ -23,13 +23,13 @@ extern void verify_delta_computation();
 extern void verify_kappa_lower_bound();
 
 // Generate random float's and test Grisu-Exact's output
-#define UNIFORM_RANDOM_TEST_FLOAT
-static std::size_t number_of_uniform_random_tests_float = 1000000;
+//#define UNIFORM_RANDOM_TEST_FLOAT
+static std::size_t number_of_uniform_random_tests_float = 10000000;
 extern void uniform_random_test_float(std::size_t number_of_tests);
 
 // Generate random double's and test Grisu-Exact's output
 #define UNIFORM_RANDOM_TEST_DOUBLE
-static std::size_t number_of_uniform_random_tests_double = 1000000;
+static std::size_t number_of_uniform_random_tests_double = 10000000;
 extern void uniform_random_test_double(std::size_t number_of_tests);
 
 // Input float's and test Grisu-Exact's output

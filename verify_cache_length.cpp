@@ -148,8 +148,8 @@ namespace jkj {
 			// the following is an upper bound:
 			static constexpr std::size_t negative_k_max_bits =
 				float_type_info<Float>::extended_precision +
-				float_type_info<Float>::max_exponent + 1 +
-				ceil_log10_pow2(-float_type_info<Float>::max_exponent - 1);
+				float_type_info<Float>::max_exponent + 1 -
+				floor_log10_pow2(float_type_info<Float>::max_exponent + 1);
 
 
 			// When k >= 0,
@@ -187,7 +187,7 @@ namespace jkj {
 			bigint_type power_of_5 = 1;
 			int prev_k = 0;
 			for (int e = 3; e <= float_type_info<Float>::max_exponent; ++e) {
-				auto k = ceil_log10_pow2(-e - 1);
+				auto k = -floor_log10_pow2(e + 1);
 				if (k != prev_k) {
 					assert(k == prev_k - 1);
 					power_of_5.multiply_5();
@@ -244,7 +244,7 @@ namespace jkj {
 			bigint_type power_of_5 = 1;
 			int prev_k = 0;
 			for (int e = 2; e >= float_type_info<Float>::min_exponent; --e) {
-				auto k = ceil_log10_pow2(-e - 1);
+				auto k = -floor_log10_pow2(e + 1);
 				if (k != prev_k) {
 					assert(k == prev_k + 1);
 					power_of_5.multiply_5();
