@@ -1,5 +1,4 @@
-#include "grisu_exact.h"
-#include "print_unsigned.h"
+#include "print_float.h"
 
 template <class Float>
 jkj::signed_fp_t<Float> decompose_float(Float x) {
@@ -29,17 +28,13 @@ jkj::signed_fp_t<Float> decompose_float(Float x) {
 #include <string>
 #include <charconv>
 
+template <class Float>
 void live_test()
 {
-	char buffer1[41];
-	char buffer2[40];
-	char* const last_letter1 = buffer1 + sizeof(buffer1) - 1;
-	*last_letter1 = '\0';
-
-	using float_type = double;
+	char buffer[41];
 
 	while (true) {
-		float_type x;
+		Float x;
 		std::string x_str;
 		while (true) {
 			std::getline(std::cin, x_str);
@@ -53,65 +48,23 @@ void live_test()
 		}
 
 		auto xx = decompose_float(x);
-		std::cout << "          sign: " << (xx.is_negative ? "-" : "+") << std::endl;
-		std::cout << "      exponent: " << xx.exponent << std::endl;
-		std::cout << "   significand: " << "0x"
-			<< std::hex << xx.significand << std::dec << std::endl;
-		std::cout << " Grisu-Exact output: ";
+		std::cout << "               sign: " << (xx.is_negative ? "-" : "+") << std::endl;
+		std::cout << "           exponent: " << xx.exponent << std::endl;
+		std::cout << "        significand: " << "0x" << std::hex << std::setfill('0');
+		if constexpr (sizeof(Float) == 4)
+			std::cout << std::setw(8);
+		else
+			std::cout << std::setw(16);
+		std::cout << xx.significand << std::dec << std::endl;
 
-		{
-			auto g = jkj::grisu_exact(x);
-
-			auto dst_ptr = &buffer2[0];
-			auto src_ptr = last_letter1;
-
-			unsigned char two_digits;
-			while (g.significand >= 100) {
-				two_digits = (unsigned char)(g.significand % 100);
-				g.significand /= 100;
-				src_ptr -= 2;
-				std::memcpy(src_ptr,
-					&jkj::print_unsigned_detail::radix_100_table[two_digits * 2], 2);
-			}
-
-			auto written = last_letter1 - src_ptr;
-
-			if (g.is_negative)
-				* (dst_ptr++) = '-';
-
-			if (g.significand < 10) {
-				if (src_ptr != last_letter1) {
-					*(dst_ptr++) = jkj::print_unsigned_detail::radix_100_table[g.significand * 2 + 1];
-					*(dst_ptr++) = '.';
-				}
-				else {
-					*(dst_ptr++) = jkj::print_unsigned_detail::radix_100_table[g.significand * 2 + 1];
-				}
-			}
-			else {
-				*(dst_ptr++) = jkj::print_unsigned_detail::radix_100_table[g.significand * 2];
-				*(dst_ptr++) = '.';
-				*(dst_ptr++) = jkj::print_unsigned_detail::radix_100_table[g.significand * 2 + 1];
-				++g.exponent;
-			}
-			std::memcpy(dst_ptr, src_ptr, written);
-			dst_ptr += written;
-			g.exponent += int(written);
-
-			if (g.exponent < 0) {
-				src_ptr = jkj::print_unsigned(unsigned(-g.exponent), last_letter1);
-				std::memcpy(dst_ptr, "e-", 2);
-				std::memcpy(dst_ptr += 2, src_ptr, last_letter1 - src_ptr + 1);
-			}
-			else if (g.exponent > 0) {
-				src_ptr = jkj::print_unsigned(unsigned(g.exponent), last_letter1);
-				std::memcpy(dst_ptr, "e+", 2);
-				std::memcpy(dst_ptr += 2, src_ptr, last_letter1 - src_ptr + 1);
-			}
-			else
-				*dst_ptr = '\0';
-		}
-
-		std::cout << buffer2 << std::endl;
+		print_float(x, buffer);
+		std::cout << " Grisu-Exact output: " << buffer << std::endl;
 	}
+}
+
+void live_test_float() {
+	live_test<float>();
+}
+void live_test_double() {
+	live_test<double>();
 }

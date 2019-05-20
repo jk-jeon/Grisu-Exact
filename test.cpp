@@ -22,9 +22,24 @@ extern void verify_delta_computation();
 //#define VERIFY_KAPPA_LOWER_BOUND
 extern void verify_kappa_lower_bound();
 
-// Input a float number and test Grisu-Exact's output
-#define LIVE_TEST
-extern void live_test();
+// Generate random float's and test Grisu-Exact's output
+#define UNIFORM_RANDOM_TEST_FLOAT
+static std::size_t number_of_uniform_random_tests_float = 1000000;
+extern void uniform_random_test_float(std::size_t number_of_tests);
+
+// Generate random double's and test Grisu-Exact's output
+#define UNIFORM_RANDOM_TEST_DOUBLE
+static std::size_t number_of_uniform_random_tests_double = 1000000;
+extern void uniform_random_test_double(std::size_t number_of_tests);
+
+// Input float's and test Grisu-Exact's output
+//#define LIVE_TEST_FLOAT
+extern void live_test_float();
+
+// Input double's and test Grisu-Exact's output
+//#define LIVE_TEST_DOUBLE
+extern void live_test_double();
+
 
 int main()
 {
@@ -58,9 +73,25 @@ int main()
 	std::cout << "Done.\n\n\n";
 #endif
 
+#ifdef UNIFORM_RANDOM_TEST_FLOAT
+	std::cout << "[Testing uniformly randomly generated float inputs...]\n";
+	uniform_random_test_float(number_of_uniform_random_tests_float);
+	std::cout << "Done.\n\n\n";
+#endif
 
-#ifdef LIVE_TEST
-	std::cout << "[Start live test]\n";
-	live_test();
+#ifdef UNIFORM_RANDOM_TEST_DOUBLE
+	std::cout << "[Testing uniformly randomly generated double inputs...]\n";
+	uniform_random_test_double(number_of_uniform_random_tests_double);
+	std::cout << "Done.\n\n\n";
+#endif
+
+#ifdef LIVE_TEST_FLOAT
+	std::cout << "[Start live test for float's]\n";
+	live_test_float();
+#endif
+
+#ifdef LIVE_TEST_DOUBLE
+	std::cout << "[Start live test for double's]\n";
+	live_test_double();
 #endif
 }
