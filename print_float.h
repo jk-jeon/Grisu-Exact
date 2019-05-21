@@ -1,8 +1,8 @@
 #ifndef __PRINT_FLOAT__
 #define __PRINT_FLOAT__
 
-#include "grisu_exact.h"
-#include "grisu_exact_nonfinite_handlers.h"
+//#include "grisu_exact.h"
+#include "grisu_exact_manually_inlined.h"
 #include "print_unsigned.h"
 
 template <class Float>
@@ -11,7 +11,7 @@ char* print_float(Float x, char* dst_ptr) {
 	char* const temp_last_letter = temp_buffer + sizeof(temp_buffer) - 1;
 	*temp_last_letter = '\0';
 
-	auto g = jkj::grisu_exact(x, jkj::grisu_exact_nonfinite_handlers::ignore_and_continue{});
+	auto g = jkj::grisu_exact(x);
 
 	auto src_ptr = temp_last_letter;
 
