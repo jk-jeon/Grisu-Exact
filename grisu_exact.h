@@ -1010,19 +1010,19 @@ namespace jkj {
 				auto r = umul192_upper128(f, cache);
 				return{
 					r.high(),
-					r.low() >> (float_type_info<double>::extended_precision - beta)
+					beta == 0 ? 0 : r.low() >> (float_type_info<double>::extended_precision - beta)
 				};
 			}
 
 			static std::pair<extended_significand_type, extended_significand_type>
-				compute_delta(extended_significand_type edge_case_boundary_bit,
+				compute_delta(bool is_edge_case,
 					cache_entry_type const& cache, int beta)
 			{
 				extended_significand_type r;
-				if (edge_case_boundary_bit == 0)
-					r = cache.high();
-				else
+				if (is_edge_case)
 					r = (cache.high() >> 1) + (cache.high() >> 2);
+				else
+					r = cache.high();					
 
 				constexpr auto mask = extended_significand_type(-1) >> q_mp_1;
 				return{
@@ -1041,11 +1041,18 @@ namespace jkj {
 
 			static bool is_z2_smaller_than_delta2(
 				extended_significand_type fplus,
-				extended_significand_type edge_case_boundary_bit,
 				extended_significand_type& fminus,
 				int beta, cache_entry_type const& cache)
 			{
-				fminus = (fplus - (float_type_info<Float>::boundary_bit << 1)) | edge_case_boundary_bit;
+				if (fplus !=
+					(float_type_info<Float>::sign_bit_mask | float_type_info<Float>::boundary_bit))
+				{
+					fminus = fplus - (float_type_info<Float>::boundary_bit << 1);
+				}
+				else {
+					fminus = float_type_info<Float>::sign_bit_mask -
+						float_type_info<Float>::edge_case_boundary_bit;
+				}					
 
 				auto [mul_upper, mul_lower] = compute_mul_helper<Float>::compute_mul(fminus, cache, beta);
 				if (beta == 0)
@@ -1151,24 +1158,25 @@ namespace jkj {
 
 			static bool is_z2_same_as_delta2(
 				extended_significand_type fminus,
-				extended_significand_type edge_case_boundary_bit,
 				int e_plus_1, int minus_k)
 			{
+				// Normal case
+				if (fminus !=
+					(float_type_info<Float>::sign_bit_mask - float_type_info<Float>::edge_case_boundary_bit))
+				{
+					return is_product_integer(fminus, e_plus_1, minus_k);
+				}
 				// Edge case
-				if (edge_case_boundary_bit != 0) {
+				else {
 					return e_plus_1 <= 3 &&
 						e_plus_1 >= float_type_info<Float>::zero_fractional_part_min_exponent_edge + 1;
 				}
-				// Normal case
-				else {
-					return is_product_integer(fminus, e_plus_1, minus_k);
-				}
 			}
 
-			static bool is_delta_integer(extended_significand_type edge_case_boundary_bit, int e_plus_1)
+			static bool is_delta_integer(bool is_edge_case, int e_plus_1)
 			{
 				// Edge case
-				if (edge_case_boundary_bit != 0) {
+				if (is_edge_case) {
 					return e_plus_1 <= 3 &&
 						e_plus_1 >= float_type_info<Float>::zero_fractional_part_min_exponent_edge + 1;
 				}
@@ -1300,8 +1308,10 @@ namespace jkj {
 				auto exponent = int((bit_representation << 1) >> (float_type_info::precision + 1));
 
 				// Deal with normal/subnormal dichotomy
-				significand |= (exponent == 0 ? 0 : float_type_info::sign_bit_mask);
-				exponent += (exponent == 0 ? 1 : 0);
+				if (exponent != 0)
+					significand |= float_type_info::sign_bit_mask;
+				else
+					exponent = 1;
 
 				exponent += (float_type_info::exponent_bias -
 					float_type_info::extended_precision + 1);
@@ -1309,24 +1319,23 @@ namespace jkj {
 				exponent_plus_1 = exponent + 1;
 			}
 
-			// Deal with the left-edge case
-			auto edge_case_boundary_bit = (significand == float_type_info::sign_bit_mask ?
-				float_type_info::edge_case_boundary_bit : 0);
-
 			// Compute the right boundary; computation of the left boundary is delayed
-			auto fplus = significand | float_type_info::boundary_bit;
+			auto const fplus = significand | float_type_info::boundary_bit;
 			extended_significand_type fminus;
 
+			bool const is_edge_case =
+				fplus == (float_type_info::sign_bit_mask | float_type_info::boundary_bit);
+
 			// Compute k and beta
-			int minus_k = floor_log10_pow2(exponent_plus_1);
-			int beta = exponent_plus_1 + floor_log2_pow10(-minus_k);
+			int const minus_k = floor_log10_pow2(exponent_plus_1);
+			int const beta = exponent_plus_1 + floor_log2_pow10(-minus_k);
 			assert(beta >= 0 && beta <= 3);
 
 			// Compute z1 and delta1
 			auto const cache = get_cache<Float>(-minus_k);
 			auto const [z11, z12] = compute_mul_helper<Float>::compute_mul(fplus, cache, beta);
 			auto [delta11, delta12] = compute_mul_helper<Float>::compute_delta(
-				edge_case_boundary_bit, cache, beta);
+				is_edge_case, cache, beta);
 
 			// Computation of the following is delayed
 			enum class z2_vs_delta2_t {
@@ -1351,7 +1360,7 @@ namespace jkj {
 				// Decrease kappa until 10^kappa becomes smaller than delta
 				// If left boundary is included, 10^kappa can also be equal to delta
 				bool is_delta_integer = compare_fractional<Float>::is_delta_integer(
-					edge_case_boundary_bit, exponent_plus_1);
+					is_edge_case, exponent_plus_1);
 
 				auto should_continue = [&]() {
 					if (divisor < delta11)
@@ -1391,33 +1400,32 @@ namespace jkj {
 						avoid_right_boundary();
 					}
 				}
-			};
-			if (r > delta11) {
-				when_kappa_is_2();
+
 				return ret_value;
+			};
+
+			if (r > delta11) {
+				return when_kappa_is_2();
 			}
 			else if (r == delta11) {
 				if (z12 > delta12) {
-					when_kappa_is_2();
-					return ret_value;
+					return when_kappa_is_2();
 				}
 				else if (z12 == delta12) {
 					if (!compare_fractional<Float>::is_z2_smaller_than_delta2(
-						fplus, edge_case_boundary_bit, fminus, beta, cache))
+						fplus, fminus, beta, cache))
 					{
 						if (contain_left_boundary) {
 							if (!compare_fractional<Float>::is_z2_same_as_delta2(
-								fminus, edge_case_boundary_bit, exponent_plus_1, minus_k))
+								fminus, exponent_plus_1, minus_k))
 							{
-								when_kappa_is_2();
-								return ret_value;
+								return when_kappa_is_2();
 							}
 							else
 								z2_vs_delta2 = z2_vs_delta2_t::checked_equality_z2_is_same_as_delta2;
 						}
 						else {
-							when_kappa_is_2();
-							return ret_value;
+							return when_kappa_is_2();
 						}
 					}
 					else
@@ -1442,11 +1450,11 @@ namespace jkj {
 						switch (z2_vs_delta2) {
 						case z2_vs_delta2_t::not_compared_yet:
 							if (!compare_fractional<Float>::is_z2_smaller_than_delta2(
-								fplus, edge_case_boundary_bit, fminus, beta, cache))
+								fplus, fminus, beta, cache))
 							{
 								if (contain_left_boundary) {
 									if (!compare_fractional<Float>::is_z2_same_as_delta2(
-										fminus, edge_case_boundary_bit, exponent_plus_1, minus_k))
+										fminus, exponent_plus_1, minus_k))
 									{
 										z2_vs_delta2 =
 											z2_vs_delta2_t::checked_equality_z2_greater_than_delta2;
