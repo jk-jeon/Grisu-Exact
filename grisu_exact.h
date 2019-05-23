@@ -15,6 +15,23 @@
 #include <immintrin.h>
 #endif
 
+// Function inlining
+#if defined(__CUDA_ARCH__)
+#define GRISU_EXACT_FORCEINLINE __forceinline__
+#elif defined(_MSC_VER)
+#define GRISU_EXACT_FORCEINLINE __forceinline
+#elif defined(__GNUC__)
+#define GRISU_EXACT_FORCEINLINE inline __attribute__((__always_inline__))
+#elif defined(__CLANG__)
+#if __has_attribute(__always_inline__)
+#define GRISU_EXACT_FORCEINLINE inline __attribute__((__always_inline__))
+#else
+#define GRISU_EXACT_FORCEINLINE inline
+#endif
+#else
+#define GRISU_EXACT_FORCEINLINE inline
+#endif
+
 namespace jkj {
 	namespace grisu_exact_detail {
 		////////////////////////////////////////////////////////////////////////////////////////
@@ -1293,7 +1310,7 @@ namespace jkj {
 		bool contain_left_boundary;
 		bool contain_right_boundary;
 
-		signed_fp_t<Float> operator()() const {
+		GRISU_EXACT_FORCEINLINE signed_fp_t<Float> operator()() const {
 			using namespace jkj::grisu_exact_detail;
 
 			signed_fp_t<Float> ret_value;
@@ -1337,14 +1354,7 @@ namespace jkj {
 				is_edge_case, cache, beta);
 
 			// Computation of the following is delayed
-			enum class z2_vs_delta2_t {
-				not_compared_yet = 0,
-				checked_parity_z2_greater_than_or_equal_to_delta2 = 2,
-				checked_parity_z2_smaller_than_delta2 = 1,
-				checked_equality_z2_greater_than_delta2 = 4,
-				checked_equality_z2_is_same_as_delta2 = 6,
-				checked_equality_z2_is_smaller_than_delta2 = 5
-			} z2_vs_delta2 = z2_vs_delta2_t::not_compared_yet;
+			z2_vs_delta2_t z2_vs_delta2 = z2_vs_delta2_t::not_compared_yet;
 
 			// Compute s3 and r1,3
 			auto t = z11 / 125;
@@ -1353,59 +1363,16 @@ namespace jkj {
 			auto v = t ^ (ret_value.significand << (3 - beta));
 			auto r = 125 * v + u;
 			extended_significand_type divisor = 1000 >> beta;
-
-			// Right boundary correction routine
-			auto avoid_right_boundary = [&]() {
-				// Decrease kappa until 10^kappa becomes smaller than delta
-				// If left boundary is included, 10^kappa can also be equal to delta
-				bool is_delta_integer = compare_fractional<Float>::is_delta_integer(
-					is_edge_case, exponent_plus_1);
-
-				while (true) {
-					if (divisor < delta11)
-						break;
-					else if (divisor == delta11) {
-						if (delta12 != 0)
-							break;
-						else if (!is_delta_integer || contain_left_boundary)
-							break;
-					}
-
-					ret_value.significand *= 10;
-					divisor /= 10;
-					--ret_value.exponent;
-				}
-				--ret_value.significand;
-			};
-
+			
 			// Check if kappa is 2
-			auto when_kappa_is_2 = [&]() {
-				ret_value.exponent = 2 + minus_k;
-				r = (r << beta) + z12;
-				ret_value.significand *= 10;
-				ret_value.significand += (r / 100);
-
-				// If right boundary is not contained, we should check if z mod 10^kappa = 0
-				if (!contain_right_boundary && (r % 100) == 0) {
-					if (compare_fractional<Float>::is_product_integer(
-						fplus, exponent_plus_1, minus_k))
-					{
-						delta11 = (delta11 << beta) + delta12;
-						delta12 = 0;
-						divisor = 100;
-						avoid_right_boundary();
-					}
-				}
-
-				return ret_value;
-			};
-
 			if (r > delta11) {
-				return when_kappa_is_2();
+				return when_kappa_is_2(ret_value, is_edge_case, exponent_plus_1, minus_k, beta,
+					fplus, z12, delta11, delta12, r);
 			}
 			else if (r == delta11) {
 				if (z12 > delta12) {
-					return when_kappa_is_2();
+					return when_kappa_is_2(ret_value, is_edge_case, exponent_plus_1, minus_k, beta,
+						fplus, z12, delta11, delta12, r);
 				}
 				else if (z12 == delta12) {
 					if (!compare_fractional<Float>::is_z2_smaller_than_delta2(
@@ -1415,13 +1382,15 @@ namespace jkj {
 							if (!compare_fractional<Float>::is_z2_same_as_delta2(
 								fminus, exponent_plus_1, minus_k))
 							{
-								return when_kappa_is_2();
+								return when_kappa_is_2(ret_value, is_edge_case, exponent_plus_1, minus_k, beta,
+									fplus, z12, delta11, delta12, r);
 							}
 							else
 								z2_vs_delta2 = z2_vs_delta2_t::checked_equality_z2_is_same_as_delta2;
 						}
 						else {
-							return when_kappa_is_2();
+							return when_kappa_is_2(ret_value, is_edge_case, exponent_plus_1, minus_k, beta,
+								fplus, z12, delta11, delta12, r);
 						}
 					}
 					else
@@ -1431,106 +1400,30 @@ namespace jkj {
 
 			// Now the initial value of kappa is 3
 			ret_value.exponent = 3 + minus_k;
-
-			// Perform binary search to find kappa
-			// Returns true if updated kapp, false otherwise.
-			auto should_update_kappa = [&](extended_significand_type new_r) {
-				// Check if delta is still greater than or equal to the remainder
-				// delta should be strictly greater if the left boundary is not contained
-				if (delta11 < new_r)
-					return false;
-				else if (delta11 == new_r) {
-					if (delta12 < z12)
-						return false;
-					else if (delta12 == z12) {
-						switch (z2_vs_delta2) {
-						case z2_vs_delta2_t::not_compared_yet:
-							if (!compare_fractional<Float>::is_z2_smaller_than_delta2(
-								fplus, fminus, beta, cache))
-							{
-								if (contain_left_boundary) {
-									if (!compare_fractional<Float>::is_z2_same_as_delta2(
-										fminus, exponent_plus_1, minus_k))
-									{
-										z2_vs_delta2 =
-											z2_vs_delta2_t::checked_equality_z2_greater_than_delta2;
-										return false;
-									}
-									else {
-										z2_vs_delta2 =
-											z2_vs_delta2_t::checked_equality_z2_is_same_as_delta2;
-									}
-								}
-								else {
-									z2_vs_delta2 =
-										z2_vs_delta2_t::checked_parity_z2_greater_than_or_equal_to_delta2;
-									return false;
-								}
-							}
-							else {
-								z2_vs_delta2 =
-									z2_vs_delta2_t::checked_parity_z2_smaller_than_delta2;
-							}
-							break;
-
-						case z2_vs_delta2_t::checked_equality_z2_greater_than_delta2:
-							return false;
-
-						case z2_vs_delta2_t::checked_parity_z2_greater_than_or_equal_to_delta2:
-							assert(!contain_left_boundary);
-							return false;
-
-						case z2_vs_delta2_t::checked_equality_z2_is_same_as_delta2:
-							if (!contain_left_boundary)
-								return false;
-						}
-					}
-				}
-
-				return true;
-			};
-			auto perform_search = [&](auto ten_to_the_lambda_holder, auto lambda_holder)
-			{
-				constexpr auto ten_to_the_lambda = decltype(ten_to_the_lambda_holder)::value;
-				constexpr auto lambda = decltype(lambda_holder)::value;
-
-				auto quotient = ret_value.significand / ten_to_the_lambda;
-				auto new_r = r + divisor * (ret_value.significand % ten_to_the_lambda);
-
-				if (should_update_kappa(new_r)) {
-					// Update kappa
-					ret_value.significand = quotient;
-					ret_value.exponent += lambda;
-					r = new_r;
-					divisor *= ten_to_the_lambda;
-
-					return true;
-				}
-				return false;
-			};
-
+			
+			// Perform binary search
 			if constexpr (sizeof(Float) == 4) {
-				perform_search(std::integral_constant<extended_significand_type, 10000>{},
-					std::integral_constant<int, 4>{});
-				perform_search(std::integral_constant<extended_significand_type, 100>{},
-					std::integral_constant<int, 2>{});
-				perform_search(std::integral_constant<extended_significand_type, 10>{},
-					std::integral_constant<int, 1>{});
+				perform_search<10000, 4>(ret_value, z2_vs_delta2, exponent_plus_1, minus_k, beta,
+					fplus, fminus, z11, z12, delta11, delta12, r, divisor, cache);
+				perform_search<100, 2>(ret_value, z2_vs_delta2, exponent_plus_1, minus_k, beta,
+					fplus, fminus, z11, z12, delta11, delta12, r, divisor, cache);
+				perform_search<10, 1>(ret_value, z2_vs_delta2, exponent_plus_1, minus_k, beta,
+					fplus, fminus, z11, z12, delta11, delta12, r, divisor, cache);
 			}
 			else {
 				static_assert(sizeof(Float) == 8);
-				if (!perform_search(std::integral_constant<extended_significand_type, 1'00000000'00000000>{},
-					std::integral_constant<int, 16>{}))
+				if (!perform_search<1'00000000'00000000, 16>(ret_value, z2_vs_delta2, exponent_plus_1, minus_k, beta,
+					fplus, fminus, z11, z12, delta11, delta12, r, divisor, cache))
 				{
-					perform_search(std::integral_constant<extended_significand_type, 100000000>{},
-						std::integral_constant<int, 8>{});
-					perform_search(std::integral_constant<extended_significand_type, 10000>{},
-						std::integral_constant<int, 4>{});
-					perform_search(std::integral_constant<extended_significand_type, 100>{},
-						std::integral_constant<int, 2>{});
+					perform_search<100000000, 8>(ret_value, z2_vs_delta2, exponent_plus_1, minus_k, beta,
+						fplus, fminus, z11, z12, delta11, delta12, r, divisor, cache);
+					perform_search<10000, 4>(ret_value, z2_vs_delta2, exponent_plus_1, minus_k, beta,
+						fplus, fminus, z11, z12, delta11, delta12, r, divisor, cache);
+					perform_search<100, 2>(ret_value, z2_vs_delta2, exponent_plus_1, minus_k, beta,
+						fplus, fminus, z11, z12, delta11, delta12, r, divisor, cache);
 				}
-				perform_search(std::integral_constant<extended_significand_type, 10>{},
-					std::integral_constant<int, 1>{});
+				perform_search<10, 1>(ret_value, z2_vs_delta2, exponent_plus_1, minus_k, beta,
+					fplus, fminus, z11, z12, delta11, delta12, r, divisor, cache);
 			}
 
 			// If right boundary is not contained, we should check if z mod 10^kappa = 0
@@ -1543,7 +1436,8 @@ namespace jkj {
 						if (compare_fractional<Float>::is_product_integer(
 							fplus, exponent_plus_1, minus_k))
 						{
-							avoid_right_boundary();
+							avoid_right_boundary(ret_value, is_edge_case,
+								exponent_plus_1, delta11, delta12, divisor);
 						}
 					}
 				}
@@ -1551,13 +1445,192 @@ namespace jkj {
 
 			return ret_value;
 		}
+
+	private:
+		enum class z2_vs_delta2_t {
+			not_compared_yet = 0,
+			checked_parity_z2_greater_than_or_equal_to_delta2 = 2,
+			checked_parity_z2_smaller_than_delta2 = 1,
+			checked_equality_z2_greater_than_delta2 = 4,
+			checked_equality_z2_is_same_as_delta2 = 6,
+			checked_equality_z2_is_smaller_than_delta2 = 5
+		};
+
+		/* These functions should have been lambdas, but lambdas can't be force-inlined with MSVC2019 */
+
+		// Right boundary correction routine
+		GRISU_EXACT_FORCEINLINE void avoid_right_boundary(
+			signed_fp_t<Float>& ret_value,
+			bool is_edge_case, int exponent_plus_1,
+			extended_significand_type delta11,
+			extended_significand_type delta12,
+			extended_significand_type divisor)
+		{
+			using namespace grisu_exact_detail;
+
+			// Decrease kappa until 10^kappa becomes smaller than delta
+			// If left boundary is included, 10^kappa can also be equal to delta
+			bool is_delta_integer = compare_fractional<Float>::is_delta_integer(
+				is_edge_case, exponent_plus_1);
+
+			while (true) {
+				if (divisor < delta11)
+					break;
+				else if (divisor == delta11) {
+					if (delta12 != 0)
+						break;
+					else if (!is_delta_integer || contain_left_boundary)
+						break;
+				}
+
+				ret_value.significand *= 10;
+				divisor /= 10;
+				--ret_value.exponent;
+			}
+			--ret_value.significand;
+		};
+
+		GRISU_EXACT_FORCEINLINE signed_fp_t<Float> when_kappa_is_2(
+			signed_fp_t<Float>& ret_value,
+			bool is_edge_case, int exponent_plus_1, int minus_k, int beta,
+			extended_significand_type fplus,
+			extended_significand_type z12,
+			extended_significand_type delta11,
+			extended_significand_type delta12,
+			extended_significand_type r)
+		{
+			using namespace grisu_exact_detail;
+
+			ret_value.exponent = 2 + minus_k;
+			r = (r << beta) + z12;
+			ret_value.significand *= 10;
+			ret_value.significand += (r / 100);
+
+			// If right boundary is not contained, we should check if z mod 10^kappa = 0
+			if (!contain_right_boundary && (r % 100) == 0) {
+				if (compare_fractional<Float>::is_product_integer(
+					fplus, exponent_plus_1, minus_k))
+				{
+					avoid_right_boundary(ret_value, is_edge_case, exponent_plus_1,
+						(delta11 << beta) + delta12, 0, 100);
+				}
+			}
+
+			return ret_value;
+		};
+
+		// Perform binary search to find kappa
+		// Returns true if updated kapp, false otherwise.
+		GRISU_EXACT_FORCEINLINE bool should_update_kappa(
+			z2_vs_delta2_t& z2_vs_delta2,
+			int exponent_plus_1, int minus_k, int beta,
+			extended_significand_type fplus,
+			extended_significand_type& fminus,
+			extended_significand_type z11,
+			extended_significand_type z12,
+			extended_significand_type delta11,
+			extended_significand_type delta12,
+			extended_significand_type r,
+			typename float_type_info::cache_entry_type const& cache)
+		{
+			using namespace grisu_exact_detail;
+
+			// Check if delta is still greater than or equal to the remainder
+			// delta should be strictly greater if the left boundary is not contained
+			if (delta11 < r)
+				return false;
+			else if (delta11 == r) {
+				if (delta12 < z12)
+					return false;
+				else if (delta12 == z12) {
+					switch (z2_vs_delta2) {
+					case z2_vs_delta2_t::not_compared_yet:
+						if (!compare_fractional<Float>::is_z2_smaller_than_delta2(
+							fplus, fminus, beta, cache))
+						{
+							if (contain_left_boundary) {
+								if (!compare_fractional<Float>::is_z2_same_as_delta2(
+									fminus, exponent_plus_1, minus_k))
+								{
+									z2_vs_delta2 =
+										z2_vs_delta2_t::checked_equality_z2_greater_than_delta2;
+									return false;
+								}
+								else {
+									z2_vs_delta2 =
+										z2_vs_delta2_t::checked_equality_z2_is_same_as_delta2;
+								}
+							}
+							else {
+								z2_vs_delta2 =
+									z2_vs_delta2_t::checked_parity_z2_greater_than_or_equal_to_delta2;
+								return false;
+							}
+						}
+						else {
+							z2_vs_delta2 =
+								z2_vs_delta2_t::checked_parity_z2_smaller_than_delta2;
+						}
+						break;
+
+					case z2_vs_delta2_t::checked_equality_z2_greater_than_delta2:
+						return false;
+
+					case z2_vs_delta2_t::checked_parity_z2_greater_than_or_equal_to_delta2:
+						assert(!contain_left_boundary);
+						return false;
+
+					case z2_vs_delta2_t::checked_equality_z2_is_same_as_delta2:
+						if (!contain_left_boundary)
+							return false;
+					}
+				}
+			}
+
+			return true;
+		};
+
+		template <extended_significand_type ten_to_the_lambda, extended_significand_type lambda>
+		GRISU_EXACT_FORCEINLINE bool perform_search(
+			signed_fp_t<Float>& ret_value,
+			z2_vs_delta2_t& z2_vs_delta2,
+			int exponent_plus_1, int minus_k, int beta,
+			extended_significand_type fplus,
+			extended_significand_type& fminus,
+			extended_significand_type z11,
+			extended_significand_type z12,
+			extended_significand_type delta11,
+			extended_significand_type delta12,
+			extended_significand_type& r,
+			extended_significand_type& divisor,
+			typename float_type_info::cache_entry_type const& cache)
+		{
+			auto quotient = ret_value.significand / ten_to_the_lambda;
+			auto new_r = r + divisor * (ret_value.significand % ten_to_the_lambda);
+
+			if (should_update_kappa(z2_vs_delta2, exponent_plus_1, minus_k, beta,
+				fplus, fminus, z11, z12, delta11, delta12,
+				new_r, cache))
+			{
+				// Update kappa
+				ret_value.significand = quotient;
+				ret_value.exponent += lambda;
+				r = new_r;
+				divisor *= ten_to_the_lambda;
+
+				return true;
+			}
+			return false;
+		};
 	};
 
 	// Determines the control flow of the algorithm when the input number was not finite
 	namespace grisu_exact_nonfinite_handlers {
 		struct assert_finite {
 			template <class Float>
-			signed_fp_t<Float> operator()(grisu_exact_impl<Float>& impl, bool is_finite) const {
+			GRISU_EXACT_FORCEINLINE signed_fp_t<Float> operator()
+				(grisu_exact_impl<Float>& impl, bool is_finite) const
+			{
 				assert(is_finite);
 				return impl();
 			}
@@ -1568,7 +1641,7 @@ namespace jkj {
 		class NonfiniteHandler = grisu_exact_nonfinite_handlers::assert_finite,
 		class RoundingMode = grisu_exact_rounding_modes::to_even
 	>
-		auto grisu_exact(Float x,
+	auto grisu_exact(Float x,
 			NonfiniteHandler&& nonfinite_handler = {},
 			RoundingMode&& rounding_mode = {}) ->
 		decltype(nonfinite_handler(std::declval<grisu_exact_impl<Float>&>(), std::declval<bool>()))
@@ -1585,5 +1658,7 @@ namespace jkj {
 			(impl.bit_representation & exponent_bits_mask) != exponent_bits_mask);
 	}
 }
+
+#undef GRISU_EXACT_FORCEINLINE
 
 #endif

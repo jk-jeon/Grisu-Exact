@@ -477,7 +477,7 @@ namespace jkj {
 				assert(x.leading_one_pos.element_pos + y.leading_one_pos.element_pos < array_size);
 				
 				std::size_t single_result_leading_one_pos;
-				auto calculate_single = [&](element_type n, auto& result) {
+				auto calculate_single = [&](bigint_base::element_type n, auto& result) {
 					bigint_base::element_type mul_carry = 0;
 					for (std::size_t idx = 0; idx <= x.leading_one_pos.element_pos; ++idx) {
 						auto mul = umul128(x.elements[idx], n);
