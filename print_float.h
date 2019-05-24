@@ -2,7 +2,7 @@
 #define __PRINT_FLOAT__
 
 //#include "grisu_exact.h"
-#include "grisu_exact_manually_inlined.h"
+#include "grisu_exact.h"
 #include "print_unsigned.h"
 
 template <class Float>

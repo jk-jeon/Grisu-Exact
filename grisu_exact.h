@@ -1464,7 +1464,7 @@ namespace jkj {
 			bool is_edge_case, int exponent_plus_1,
 			extended_significand_type delta11,
 			extended_significand_type delta12,
-			extended_significand_type divisor)
+			extended_significand_type divisor) const
 		{
 			using namespace grisu_exact_detail;
 
@@ -1497,7 +1497,7 @@ namespace jkj {
 			extended_significand_type z12,
 			extended_significand_type delta11,
 			extended_significand_type delta12,
-			extended_significand_type r)
+			extended_significand_type r) const
 		{
 			using namespace grisu_exact_detail;
 
@@ -1531,7 +1531,7 @@ namespace jkj {
 			extended_significand_type delta11,
 			extended_significand_type delta12,
 			extended_significand_type r,
-			typename float_type_info::cache_entry_type const& cache)
+			typename float_type_info::cache_entry_type const& cache) const
 		{
 			using namespace grisu_exact_detail;
 
@@ -1603,7 +1603,7 @@ namespace jkj {
 			extended_significand_type delta12,
 			extended_significand_type& r,
 			extended_significand_type& divisor,
-			typename float_type_info::cache_entry_type const& cache)
+			typename float_type_info::cache_entry_type const& cache) const
 		{
 			auto quotient = ret_value.significand / ten_to_the_lambda;
 			auto new_r = r + divisor * (ret_value.significand % ten_to_the_lambda);
