@@ -49,3 +49,15 @@
 /binary64_generated_cache.txt
 /binary64_negative_k.csv
 /binary64_positive_k.csv
+/benchmark/x64/Release/vcpkg.applocal.log
+/benchmark/x64/Release/vc142.pdb
+/benchmark/x64/Release/benchmark.log
+/benchmark/x64/Release/benchmark.tlog/link.write.1.tlog
+/benchmark/x64/Release/benchmark.tlog/link.read.1.tlog
+/benchmark/x64/Release/benchmark.tlog/link.delete.1.tlog
+/benchmark/x64/Release/benchmark.tlog/link.command.1.tlog
+/benchmark/x64/Release/benchmark.tlog/CL.write.1.tlog
+/benchmark/x64/Release/benchmark.tlog/CL.read.1.tlog
+/benchmark/x64/Release/benchmark.tlog/CL.command.1.tlog
+/benchmark/x64/Release/benchmark.tlog/benchmark.write.1u.tlog
+/benchmark/x64/Release/benchmark.tlog/benchmark.lastbuildstate

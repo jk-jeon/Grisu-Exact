@@ -1,0 +1,52 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="ryu">
+      <UniqueIdentifier>{a51ec743-2573-4528-9b8c-62381edc1c52}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="grisu_exact">
+      <UniqueIdentifier>{4120d07f-0304-4f59-bab8-574288eb1228}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\grisu_exact.h">
+      <Filter>grisu_exact</Filter>
+    </ClInclude>
+    <ClInclude Include="ryu\common.h">
+      <Filter>ryu</Filter>
+    </ClInclude>
+    <ClInclude Include="ryu\d2fixed_full_table.h">
+      <Filter>ryu</Filter>
+    </ClInclude>
+    <ClInclude Include="ryu\d2s.h">
+      <Filter>ryu</Filter>
+    </ClInclude>
+    <ClInclude Include="ryu\d2s_full_table.h">
+      <Filter>ryu</Filter>
+    </ClInclude>
+    <ClInclude Include="ryu\d2s_intrinsics.h">
+      <Filter>ryu</Filter>
+    </ClInclude>
+    <ClInclude Include="ryu\digit_table.h">
+      <Filter>ryu</Filter>
+    </ClInclude>
+    <ClInclude Include="ryu\ryu.h">
+      <Filter>ryu</Filter>
+    </ClInclude>
+    <ClInclude Include="ryu\ryu2.h">
+      <Filter>ryu</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="ryu\d2fixed.c">
+      <Filter>ryu</Filter>
+    </ClCompile>
+    <ClCompile Include="ryu\d2s.c">
+      <Filter>ryu</Filter>
+    </ClCompile>
+    <ClCompile Include="ryu\f2s.c">
+      <Filter>ryu</Filter>
+    </ClCompile>
+    <ClCompile Include="main.cpp" />
+  </ItemGroup>
+</Project>
