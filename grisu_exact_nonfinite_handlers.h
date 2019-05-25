@@ -5,29 +5,12 @@
 #include <bitset>
 #include <variant>
 
-// Function inlining
-#if defined(__CUDA_ARCH__)
-#define GRISU_EXACT_FORCEINLINE __forceinline__
-#elif defined(_MSC_VER)
-#define GRISU_EXACT_FORCEINLINE __forceinline
-#elif defined(__GNUC__)
-#define GRISU_EXACT_FORCEINLINE inline __attribute__((__always_inline__))
-#elif defined(__CLANG__)
-#if __has_attribute(__always_inline__)
-#define GRISU_EXACT_FORCEINLINE inline __attribute__((__always_inline__))
-#else
-#define GRISU_EXACT_FORCEINLINE inline
-#endif
-#else
-#define GRISU_EXACT_FORCEINLINE inline
-#endif
-
 namespace jkj {
 	namespace grisu_exact_nonfinite_handlers {
 		// This policy is mainly for debugging purpose
 		struct ignore_and_continue {
 			template <class Float>
-			GRISU_EXACT_FORCEINLINE signed_fp_t<Float> operator()
+			signed_fp_t<Float> operator()
 				(grisu_exact_impl<Float>& impl, bool) const
 			{
 				return impl();
@@ -102,7 +85,7 @@ namespace jkj {
 
 		struct return_result_or_nonfinite {
 			template <class Float>
-			GRISU_EXACT_FORCEINLINE std::variant<signed_fp_t<Float>, nonfinite_float<Float>> operator()
+			std::variant<signed_fp_t<Float>, nonfinite_float<Float>> operator()
 				(grisu_exact_impl<Float>& impl, bool is_finite)
 			{
 				if (is_finite)
@@ -114,5 +97,4 @@ namespace jkj {
 	}
 }
 
-#undef GRISU_EXACT_FORCEINLINE
 #endif
