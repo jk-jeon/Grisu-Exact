@@ -312,11 +312,14 @@ struct grisu_exact_handler {
 
 void dcv(double x, char* buffer)
 {
-	jkj::grisu_exact(x, grisu_exact_handler{ buffer });
+	jkj::grisu_exact(x, grisu_exact_handler{ buffer },
+		jkj::grisu_exact_rounding_modes::to_even{});
 }
 
-void fcv(float x, char* buffer) {
-	jkj::grisu_exact(x, grisu_exact_handler{ buffer });
+void fcv(float x, char* buffer)
+{
+	jkj::grisu_exact(x, grisu_exact_handler{ buffer },
+		jkj::grisu_exact_rounding_modes::to_even{});
 }
 
 static float int32Bits2Float(uint32_t bits) {
@@ -585,6 +588,7 @@ static int bench64(const benchmark_options& options) {
 			auto t1 = steady_clock::now();
 			for (int j = 0; j < options.iterations(); ++j) {
 				d2s_buffered(f, bufferown);
+				//dcv(f, bufferown);
 				throwaway += bufferown[2];
 			}
 			auto t2 = steady_clock::now();
@@ -596,6 +600,7 @@ static int bench64(const benchmark_options& options) {
 				t1 = steady_clock::now();
 				for (int j = 0; j < options.iterations(); ++j) {
 					dcv(f, bufferown2);
+					//d2s_buffered(f, bufferown2);
 					throwaway += bufferown2[2];
 				}
 				t2 = steady_clock::now();

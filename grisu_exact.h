@@ -4,6 +4,7 @@
 //#include <bit>		// We don't have C++20 <bit> yet
 #include <bitset>		// Payload of NaN's is of type std::bitset
 #include <cassert>
+#include <cfenv>
 #include <cstddef>		// std::size_t, etc
 #include <cstdint>		// std::uint32_t, etc.
 #include <cstring>		// std::memcpy; not needed if C++20 std::bit_cast is used instead
@@ -962,6 +963,8 @@ namespace jkj {
 
 		template <class Float>
 		constexpr typename float_type_info<Float>::cache_entry_type const& get_cache(int k) {
+			assert(k >= float_type_info<Float>::min_k &&
+				k <= float_type_info<Float>::max_k);
 			return cache_holder<Float>::cache[std::size_t(k - float_type_info<Float>::min_k)];
 		}
 
@@ -1289,6 +1292,25 @@ namespace jkj {
 				return{ true, true };
 			}
 		};
+
+		// Choose the correct rounding mode on runtime
+		struct runtime {
+			template <class Float>
+			std::pair<bool, bool> operator()(tagged_holder<Float> br) const {
+				auto rounding_mode = std::fegetround();
+				switch (rounding_mode) {
+				case FE_DOWNWARD:
+					return downward{}(br);
+				case FE_TONEAREST:
+					return to_even{}(br);
+				case FE_TOWARDZERO:
+					return toward_zero{}(br);
+				default:
+					assert(rounding_mode == FE_UPWARD);
+					return upward{}(br);
+				}
+			}
+		};
 	}
 
 	// Get sign/decimal significand/decimal exponent from
@@ -1400,12 +1422,12 @@ namespace jkj {
 				// Deal with normal/subnormal dichotomy
 				if (exponent != 0) {
 					significand |= float_type_info::sign_bit_mask;
-					exponent_plus_1 = exponent + int(float_type_info::exponent_bias -
-						float_type_info::extended_precision + 2);
+					exponent_plus_1 = exponent + float_type_info::exponent_bias -
+						int(float_type_info::extended_precision) + 2;
 				}
 				else {
-					exponent_plus_1 = int(float_type_info::exponent_bias -
-						float_type_info::extended_precision + 3);
+					exponent_plus_1 = float_type_info::exponent_bias -
+						int(float_type_info::extended_precision) + 3;
 				}
 			}
 
@@ -1460,16 +1482,13 @@ namespace jkj {
 								return when_kappa_is_2(ret_value, is_edge_case, exponent_plus_1, minus_k, three_minus_beta,
 									fplus, delta11, z12, delta12, r);
 							}
-							else
-								z2_vs_delta2 = z2_vs_delta2_t::checked_equality_z2_is_same_as_delta2;
 						}
 						else {
 							return when_kappa_is_2(ret_value, is_edge_case, exponent_plus_1, minus_k, three_minus_beta,
 								fplus, delta11, z12, delta12, r);
 						}
 					}
-					else
-						z2_vs_delta2 = z2_vs_delta2_t::checked_parity_z2_smaller_than_delta2;
+					z2_vs_delta2 = z2_vs_delta2_t::z2_smaller;
 				}
 			}
 
@@ -1478,27 +1497,55 @@ namespace jkj {
 			
 			// Perform binary search
 			if constexpr (sizeof(Float) == 4) {
-				perform_search<10000, 4>(ret_value, z2_vs_delta2, exponent_plus_1, minus_k, three_minus_beta,
-					fminus, delta11, z12, delta12, r, divisor, cache);
-				perform_search<100, 2>(ret_value, z2_vs_delta2, exponent_plus_1, minus_k, three_minus_beta,
-					fminus, delta11, z12, delta12, r, divisor, cache);
-				perform_search<10, 1>(ret_value, z2_vs_delta2, exponent_plus_1, minus_k, three_minus_beta,
-					fminus, delta11, z12, delta12, r, divisor, cache);
+				if (contain_left_boundary) {
+					perform_search<true, 10000, 4>(ret_value, z2_vs_delta2, exponent_plus_1, minus_k, three_minus_beta,
+						fminus, delta11, z12, delta12, r, divisor, cache);
+					perform_search<true, 100, 2>(ret_value, z2_vs_delta2, exponent_plus_1, minus_k, three_minus_beta,
+						fminus, delta11, z12, delta12, r, divisor, cache);
+					perform_search<true, 10, 1>(ret_value, z2_vs_delta2, exponent_plus_1, minus_k, three_minus_beta,
+						fminus, delta11, z12, delta12, r, divisor, cache);
+				}
+				else {
+					perform_search<false, 10000, 4>(ret_value, z2_vs_delta2, exponent_plus_1, minus_k, three_minus_beta,
+						fminus, delta11, z12, delta12, r, divisor, cache);
+					perform_search<false, 100, 2>(ret_value, z2_vs_delta2, exponent_plus_1, minus_k, three_minus_beta,
+						fminus, delta11, z12, delta12, r, divisor, cache);
+					perform_search<false, 10, 1>(ret_value, z2_vs_delta2, exponent_plus_1, minus_k, three_minus_beta,
+						fminus, delta11, z12, delta12, r, divisor, cache);
+				}
 			}
 			else {
 				static_assert(sizeof(Float) == 8);
-				if (!perform_search<1'00000000'00000000, 16>(ret_value, z2_vs_delta2, exponent_plus_1, minus_k, three_minus_beta,
-					fminus, delta11, z12, delta12, r, divisor, cache))
-				{
-					perform_search<100000000, 8>(ret_value, z2_vs_delta2, exponent_plus_1, minus_k, three_minus_beta,
-						fminus, delta11, z12, delta12, r, divisor, cache);
-					perform_search<10000, 4>(ret_value, z2_vs_delta2, exponent_plus_1, minus_k, three_minus_beta,
-						fminus, delta11, z12, delta12, r, divisor, cache);
-					perform_search<100, 2>(ret_value, z2_vs_delta2, exponent_plus_1, minus_k, three_minus_beta,
+				if (contain_left_boundary) {
+					if (!perform_search<true, 1'00000000'00000000, 16>(
+						ret_value, z2_vs_delta2, exponent_plus_1, minus_k, three_minus_beta,
+						fminus, delta11, z12, delta12, r, divisor, cache))
+					{
+						perform_search<true, 100000000, 8>(ret_value, z2_vs_delta2, exponent_plus_1, minus_k, three_minus_beta,
+							fminus, delta11, z12, delta12, r, divisor, cache);
+						perform_search<true, 10000, 4>(ret_value, z2_vs_delta2, exponent_plus_1, minus_k, three_minus_beta,
+							fminus, delta11, z12, delta12, r, divisor, cache);
+						perform_search<true, 100, 2>(ret_value, z2_vs_delta2, exponent_plus_1, minus_k, three_minus_beta,
+							fminus, delta11, z12, delta12, r, divisor, cache);
+					}
+					perform_search<true, 10, 1>(ret_value, z2_vs_delta2, exponent_plus_1, minus_k, three_minus_beta,
 						fminus, delta11, z12, delta12, r, divisor, cache);
 				}
-				perform_search<10, 1>(ret_value, z2_vs_delta2, exponent_plus_1, minus_k, three_minus_beta,
-					fminus, delta11, z12, delta12, r, divisor, cache);
+				else {
+					if (!perform_search<false, 1'00000000'00000000, 16>(
+						ret_value, z2_vs_delta2, exponent_plus_1, minus_k, three_minus_beta,
+						fminus, delta11, z12, delta12, r, divisor, cache))
+					{
+						perform_search<false, 100000000, 8>(ret_value, z2_vs_delta2, exponent_plus_1, minus_k, three_minus_beta,
+							fminus, delta11, z12, delta12, r, divisor, cache);
+						perform_search<false, 10000, 4>(ret_value, z2_vs_delta2, exponent_plus_1, minus_k, three_minus_beta,
+							fminus, delta11, z12, delta12, r, divisor, cache);
+						perform_search<false, 100, 2>(ret_value, z2_vs_delta2, exponent_plus_1, minus_k, three_minus_beta,
+							fminus, delta11, z12, delta12, r, divisor, cache);
+					}
+					perform_search<false, 10, 1>(ret_value, z2_vs_delta2, exponent_plus_1, minus_k, three_minus_beta,
+						fminus, delta11, z12, delta12, r, divisor, cache);
+				}		
 			}
 
 			// If right boundary is not contained, we should check if z mod 10^kappa = 0
@@ -1524,11 +1571,8 @@ namespace jkj {
 	private:
 		enum class z2_vs_delta2_t {
 			not_compared_yet = 0,
-			checked_parity_z2_greater_than_or_equal_to_delta2 = 1,
-			checked_parity_z2_smaller_than_delta2 = 2,
-			checked_equality_z2_greater_than_delta2 = 3,
-			checked_equality_z2_is_same_as_delta2 = 4,
-			checked_equality_z2_is_smaller_than_delta2 = 6
+			z2_larger = 1,
+			z2_smaller = 2
 		};
 		
 		// Right boundary correction routine
@@ -1593,7 +1637,8 @@ namespace jkj {
 
 		// Perform binary search to find kappa
 		// Returns true if updated kapp, false otherwise.
-		template <extended_significand_type ten_to_the_lambda, extended_significand_type lambda>
+		template <bool contain_left_boundary_constexpr,
+			extended_significand_type ten_to_the_lambda, extended_significand_type lambda>
 		bool perform_search(
 			signed_fp_t<Float>& ret_value,
 			z2_vs_delta2_t& z2_vs_delta2,
@@ -1635,47 +1680,41 @@ namespace jkj {
 				if (delta12 < z12)
 					return false;
 				else if (delta12 == z12) {
-					switch (z2_vs_delta2) {
-					case z2_vs_delta2_t::not_compared_yet:
-						if (!compare_fractional<Float>::is_z2_smaller_than_delta2(
-							fminus, three_minus_beta, cache))
-						{
-							if (contain_left_boundary) {
+					if constexpr (contain_left_boundary_constexpr) {
+						switch (z2_vs_delta2) {
+						case z2_vs_delta2_t::z2_larger:
+							return false;
+
+						case z2_vs_delta2_t::not_compared_yet:
+							if (!compare_fractional<Float>::is_z2_smaller_than_delta2(
+								fminus, three_minus_beta, cache))
+							{
 								if (!compare_fractional<Float>::is_z2_same_as_delta2(
 									fminus, exponent_plus_1, minus_k))
 								{
-									z2_vs_delta2 =
-										z2_vs_delta2_t::checked_equality_z2_greater_than_delta2;
+									z2_vs_delta2 = z2_vs_delta2_t::z2_larger;
 									return false;
 								}
-								else {
-									z2_vs_delta2 =
-										z2_vs_delta2_t::checked_equality_z2_is_same_as_delta2;
-								}
 							}
-							else {
-								z2_vs_delta2 =
-									z2_vs_delta2_t::checked_parity_z2_greater_than_or_equal_to_delta2;
+							z2_vs_delta2 = z2_vs_delta2_t::z2_smaller;
+						}
+					}
+					else {
+						switch (z2_vs_delta2) {
+						case z2_vs_delta2_t::z2_larger:
+							return false;
+
+						case z2_vs_delta2_t::not_compared_yet:
+							if (!compare_fractional<Float>::is_z2_smaller_than_delta2(
+								fminus, three_minus_beta, cache))
+							{
+								z2_vs_delta2 = z2_vs_delta2_t::z2_larger;
 								return false;
 							}
+							z2_vs_delta2 = z2_vs_delta2_t::z2_smaller;
 						}
-						else {
-							z2_vs_delta2 =
-								z2_vs_delta2_t::checked_parity_z2_smaller_than_delta2;
-						}
-						break;
-
-					case z2_vs_delta2_t::checked_equality_z2_greater_than_delta2:
-						return false;
-
-					case z2_vs_delta2_t::checked_parity_z2_greater_than_or_equal_to_delta2:
-						assert(!contain_left_boundary);
-						return false;
-
-					case z2_vs_delta2_t::checked_equality_z2_is_same_as_delta2:
-						if (!contain_left_boundary)
-							return false;
 					}
+					
 				}
 			}
 
@@ -1712,7 +1751,7 @@ namespace jkj {
 
 	template <class Float,
 		class SpecialCaseHandler = grisu_exact_case_handlers::assert_finite,
-		class RoundingMode = grisu_exact_rounding_modes::to_even
+		class RoundingMode = grisu_exact_rounding_modes::runtime
 	>
 	auto grisu_exact(Float x,
 		SpecialCaseHandler&& special_case_handler = {},
