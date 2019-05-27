@@ -588,7 +588,6 @@ static int bench64(const benchmark_options& options) {
 			auto t1 = steady_clock::now();
 			for (int j = 0; j < options.iterations(); ++j) {
 				d2s_buffered(f, bufferown);
-				//dcv(f, bufferown);
 				throwaway += bufferown[2];
 			}
 			auto t2 = steady_clock::now();
@@ -600,7 +599,6 @@ static int bench64(const benchmark_options& options) {
 				t1 = steady_clock::now();
 				for (int j = 0; j < options.iterations(); ++j) {
 					dcv(f, bufferown2);
-					//d2s_buffered(f, bufferown2);
 					throwaway += bufferown2[2];
 				}
 				t2 = steady_clock::now();

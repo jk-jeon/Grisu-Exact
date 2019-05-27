@@ -1496,8 +1496,8 @@ namespace jkj {
 			ret_value.exponent = 3 + minus_k;
 			
 			// Perform binary search
-			if constexpr (sizeof(Float) == 4) {
-				if (contain_left_boundary) {
+			if (contain_left_boundary) {
+				if constexpr (sizeof(Float) == 4) {
 					perform_search<true, 10000, 4>(ret_value, z2_vs_delta2, exponent_plus_1, minus_k, three_minus_beta,
 						fminus, delta11, z12, delta12, r, divisor, cache);
 					perform_search<true, 100, 2>(ret_value, z2_vs_delta2, exponent_plus_1, minus_k, three_minus_beta,
@@ -1506,17 +1506,7 @@ namespace jkj {
 						fminus, delta11, z12, delta12, r, divisor, cache);
 				}
 				else {
-					perform_search<false, 10000, 4>(ret_value, z2_vs_delta2, exponent_plus_1, minus_k, three_minus_beta,
-						fminus, delta11, z12, delta12, r, divisor, cache);
-					perform_search<false, 100, 2>(ret_value, z2_vs_delta2, exponent_plus_1, minus_k, three_minus_beta,
-						fminus, delta11, z12, delta12, r, divisor, cache);
-					perform_search<false, 10, 1>(ret_value, z2_vs_delta2, exponent_plus_1, minus_k, three_minus_beta,
-						fminus, delta11, z12, delta12, r, divisor, cache);
-				}
-			}
-			else {
-				static_assert(sizeof(Float) == 8);
-				if (contain_left_boundary) {
+					static_assert(sizeof(Float) == 8);
 					if (!perform_search<true, 1'00000000'00000000, 16>(
 						ret_value, z2_vs_delta2, exponent_plus_1, minus_k, three_minus_beta,
 						fminus, delta11, z12, delta12, r, divisor, cache))
@@ -1531,7 +1521,18 @@ namespace jkj {
 					perform_search<true, 10, 1>(ret_value, z2_vs_delta2, exponent_plus_1, minus_k, three_minus_beta,
 						fminus, delta11, z12, delta12, r, divisor, cache);
 				}
+			}
+			else {				
+				if constexpr (sizeof(Float) == 4) {
+					perform_search<false, 10000, 4>(ret_value, z2_vs_delta2, exponent_plus_1, minus_k, three_minus_beta,
+						fminus, delta11, z12, delta12, r, divisor, cache);
+					perform_search<false, 100, 2>(ret_value, z2_vs_delta2, exponent_plus_1, minus_k, three_minus_beta,
+						fminus, delta11, z12, delta12, r, divisor, cache);
+					perform_search<false, 10, 1>(ret_value, z2_vs_delta2, exponent_plus_1, minus_k, three_minus_beta,
+						fminus, delta11, z12, delta12, r, divisor, cache);
+				}
 				else {
+					static_assert(sizeof(Float) == 8);
 					if (!perform_search<false, 1'00000000'00000000, 16>(
 						ret_value, z2_vs_delta2, exponent_plus_1, minus_k, three_minus_beta,
 						fminus, delta11, z12, delta12, r, divisor, cache))
@@ -1545,7 +1546,7 @@ namespace jkj {
 					}
 					perform_search<false, 10, 1>(ret_value, z2_vs_delta2, exponent_plus_1, minus_k, three_minus_beta,
 						fminus, delta11, z12, delta12, r, divisor, cache);
-				}		
+				}
 			}
 
 			// If right boundary is not contained, we should check if z mod 10^kappa = 0
@@ -1713,8 +1714,7 @@ namespace jkj {
 							}
 							z2_vs_delta2 = z2_vs_delta2_t::z2_smaller;
 						}
-					}
-					
+					}					
 				}
 			}
 
@@ -1750,13 +1750,13 @@ namespace jkj {
 	}
 
 	template <class Float,
-		class SpecialCaseHandler = grisu_exact_case_handlers::assert_finite,
+		class CaseHandler = grisu_exact_case_handlers::assert_finite,
 		class RoundingMode = grisu_exact_rounding_modes::runtime
 	>
 	auto grisu_exact(Float x,
-		SpecialCaseHandler&& special_case_handler = {},
+		CaseHandler&& case_handler = {},
 		RoundingMode&& rounding_mode = {}) ->
-		decltype(special_case_handler(std::declval<grisu_exact_impl<Float>&>()))
+		decltype(case_handler(std::declval<grisu_exact_impl<Float>&>()))
 	{
 		grisu_exact_impl<Float> impl;
 		std::memcpy(&impl.bit_representation, &x, sizeof(Float));
@@ -1766,7 +1766,7 @@ namespace jkj {
 		constexpr auto exponent_bits_mask =
 			grisu_exact_detail::float_type_info<Float>::exponent_bits_mask;
 
-		return special_case_handler(impl);
+		return case_handler(impl);
 	}
 }
 
