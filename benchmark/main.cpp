@@ -40,9 +40,8 @@
 using namespace std::chrono;
 
 constexpr int BUFFER_SIZE = 40;
-static char buffer[BUFFER_SIZE];
 
-namespace {
+struct grisu_exact_handler {
 	alignas(std::uint32_t) static constexpr char radix_100_table[] = {
 		'0', '0', '0', '1', '0', '2', '0', '3', '0', '4',
 		'0', '5', '0', '6', '0', '7', '0', '8', '0', '9',
@@ -66,239 +65,258 @@ namespace {
 		'9', '5', '9', '6', '9', '7', '9', '8', '9', '9'
 	};
 
-	uint32_t decimalLength17(const uint64_t v) {
-		// This is slightly faster than a loop.
-		// The average output length is 16.38 digits, so we check high-to-low.
-		// Function precondition: v is not an 18, 19, or 20-digit number.
-		// (17 digits are sufficient for round-tripping.)
-		assert(v < 100000000000000000L);
-		if (v >= 10000000000000000L) { return 17; }
-		if (v >= 1000000000000000L) { return 16; }
-		if (v >= 100000000000000L) { return 15; }
-		if (v >= 10000000000000L) { return 14; }
-		if (v >= 1000000000000L) { return 13; }
-		if (v >= 100000000000L) { return 12; }
-		if (v >= 10000000000L) { return 11; }
-		if (v >= 1000000000L) { return 10; }
-		if (v >= 100000000L) { return 9; }
-		if (v >= 10000000L) { return 8; }
-		if (v >= 1000000L) { return 7; }
-		if (v >= 100000L) { return 6; }
-		if (v >= 10000L) { return 5; }
-		if (v >= 1000L) { return 4; }
-		if (v >= 100L) { return 3; }
-		if (v >= 10L) { return 2; }
-		return 1;
+	template <class UInt>
+	static constexpr std::uint32_t decimal_length(UInt const v) {
+		if constexpr (std::is_same_v<UInt, std::uint32_t>) {
+			// Function precondition: v is not a 10-digit number.
+			// (f2s: 9 digits are sufficient for round-tripping.)
+			// (d2fixed: We print 9-digit blocks.)
+			assert(v < 1000000000);
+			if (v >= 100000000) { return 9; }
+			if (v >= 10000000) { return 8; }
+			if (v >= 1000000) { return 7; }
+			if (v >= 100000) { return 6; }
+			if (v >= 10000) { return 5; }
+			if (v >= 1000) { return 4; }
+			if (v >= 100) { return 3; }
+			if (v >= 10) { return 2; }
+			return 1;
+		}
+		else {
+			static_assert(std::is_same_v<UInt, std::uint64_t>);
+			// This is slightly faster than a loop.
+			// The average output length is 16.38 digits, so we check high-to-low.
+			// Function precondition: v is not an 18, 19, or 20-digit number.
+			// (17 digits are sufficient for round-tripping.)
+			assert(v < 100000000000000000L);
+			if (v >= 10000000000000000L) { return 17; }
+			if (v >= 1000000000000000L) { return 16; }
+			if (v >= 100000000000000L) { return 15; }
+			if (v >= 10000000000000L) { return 14; }
+			if (v >= 1000000000000L) { return 13; }
+			if (v >= 100000000000L) { return 12; }
+			if (v >= 10000000000L) { return 11; }
+			if (v >= 1000000000L) { return 10; }
+			if (v >= 100000000L) { return 9; }
+			if (v >= 10000000L) { return 8; }
+			if (v >= 1000000L) { return 7; }
+			if (v >= 100000L) { return 6; }
+			if (v >= 10000L) { return 5; }
+			if (v >= 1000L) { return 4; }
+			if (v >= 100L) { return 3; }
+			if (v >= 10L) { return 2; }
+			return 1;
+		}
 	}
 
-	uint32_t decimalLength9(const uint32_t v) {
-		// Function precondition: v is not a 10-digit number.
-		// (f2s: 9 digits are sufficient for round-tripping.)
-		// (d2fixed: We print 9-digit blocks.)
-		assert(v < 1000000000);
-		if (v >= 100000000) { return 9; }
-		if (v >= 10000000) { return 8; }
-		if (v >= 1000000) { return 7; }
-		if (v >= 100000) { return 6; }
-		if (v >= 10000) { return 5; }
-		if (v >= 1000) { return 4; }
-		if (v >= 100) { return 3; }
-		if (v >= 10) { return 2; }
-		return 1;
-	}
-}
+	char* buffer;
+	template <class Float>
+	void operator()(jkj::grisu_exact_impl<Float>& impl) const
+	{
+		// Step 5: Print the decimal representation.
+		int index = 0;
 
-void dcv(double x)
+		if (!impl.is_finite() || !impl.is_nonzero()) {
+			if (impl.extract_significand() != 0)
+			{
+				std::memcpy(buffer, "NaN", 3);
+				index += 3;
+			}
+			else {
+				if (impl.is_negative()) {
+					buffer[index++] = '-';
+				}
+
+				if (impl.is_nonzero()) {
+					std::memcpy(buffer + index, "Infinity", 8);
+					index += 8;
+				}
+				else {
+					std::memcpy(buffer + index, "0E0", 3);
+					index += 3;
+				}
+			}
+		}
+		else {
+			auto v = impl();
+
+			if (v.is_negative) {
+				buffer[index++] = '-';
+			}
+			auto output = v.significand;
+			auto const olength = decimal_length(output);
+
+			if constexpr (sizeof(Float) == 4) {
+				// Print the decimal digits.
+				// The following code is equivalent to:
+				// for (uint32_t i = 0; i < olength - 1; ++i) {
+				//   const uint32_t c = output % 10; output /= 10;
+				//   result[index + olength - i] = (char) ('0' + c);
+				// }
+				// result[index] = '0' + output % 10;
+				uint32_t i = 0;
+				while (output >= 10000) {
+#ifdef __clang__ // https://bugs.llvm.org/show_bug.cgi?id=38217
+					const uint32_t c = output - 10000 * (output / 10000);
+#else
+					const uint32_t c = output % 10000;
+#endif
+					output /= 10000;
+					const uint32_t c0 = (c % 100) << 1;
+					const uint32_t c1 = (c / 100) << 1;
+					memcpy(buffer + index + olength - i - 1, radix_100_table + c0, 2);
+					memcpy(buffer + index + olength - i - 3, radix_100_table + c1, 2);
+					i += 4;
+				}
+				if (output >= 100) {
+					const uint32_t c = (output % 100) << 1;
+					output /= 100;
+					memcpy(buffer + index + olength - i - 1, radix_100_table + c, 2);
+					i += 2;
+				}
+				if (output >= 10) {
+					const uint32_t c = output << 1;
+					// We can't use memcpy here: the decimal dot goes between these two digits.
+					buffer[index + olength - i] = radix_100_table[c + 1];
+					buffer[index] = radix_100_table[c];
+				}
+				else {
+					buffer[index] = (char)('0' + output);
+				}
+
+				// Print decimal point if needed.
+				if (olength > 1) {
+					buffer[index + 1] = '.';
+					index += olength + 1;
+				}
+				else {
+					++index;
+				}
+
+				// Print the exponent.
+				buffer[index++] = 'E';
+				int32_t exp = v.exponent + (int32_t)olength - 1;
+				if (exp < 0) {
+					buffer[index++] = '-';
+					exp = -exp;
+				}
+
+				if (exp >= 10) {
+					memcpy(buffer + index, radix_100_table + 2 * exp, 2);
+					index += 2;
+				}
+				else {
+					buffer[index++] = (char)('0' + exp);
+				}
+			}
+			else {
+				// Print the decimal digits.
+				// The following code is equivalent to:
+				// for (uint32_t i = 0; i < olength - 1; ++i) {
+				//   const uint32_t c = output % 10; output /= 10;
+				//   result[index + olength - i] = (char) ('0' + c);
+				// }
+				// result[index] = '0' + output % 10;
+
+				uint32_t i = 0;
+				// We prefer 32-bit operations, even on 64-bit platforms.
+				// We have at most 17 digits, and uint32_t can store 9 digits.
+				// If output doesn't fit into uint32_t, we cut off 8 digits,
+				// so the rest will fit into uint32_t.
+				if ((output >> 32) != 0) {
+					// Expensive 64-bit division.
+					const uint64_t q = output / 100000000;
+					uint32_t output2 = ((uint32_t)output) - 100000000 * ((uint32_t)q);
+					output = q;
+
+					const uint32_t c = output2 % 10000;
+					output2 /= 10000;
+					const uint32_t d = output2 % 10000;
+					const uint32_t c0 = (c % 100) << 1;
+					const uint32_t c1 = (c / 100) << 1;
+					const uint32_t d0 = (d % 100) << 1;
+					const uint32_t d1 = (d / 100) << 1;
+					memcpy(buffer + index + olength - i - 1, radix_100_table + c0, 2);
+					memcpy(buffer + index + olength - i - 3, radix_100_table + c1, 2);
+					memcpy(buffer + index + olength - i - 5, radix_100_table + d0, 2);
+					memcpy(buffer + index + olength - i - 7, radix_100_table + d1, 2);
+					i += 8;
+				}
+				uint32_t output2 = (uint32_t)output;
+				while (output2 >= 10000) {
+#ifdef __clang__ // https://bugs.llvm.org/show_bug.cgi?id=38217
+					const uint32_t c = output2 - 10000 * (output2 / 10000);
+#else
+					const uint32_t c = output2 % 10000;
+#endif
+					output2 /= 10000;
+					const uint32_t c0 = (c % 100) << 1;
+					const uint32_t c1 = (c / 100) << 1;
+					memcpy(buffer + index + olength - i - 1, radix_100_table + c0, 2);
+					memcpy(buffer + index + olength - i - 3, radix_100_table + c1, 2);
+					i += 4;
+				}
+				if (output2 >= 100) {
+					const uint32_t c = (output2 % 100) << 1;
+					output2 /= 100;
+					memcpy(buffer + index + olength - i - 1, radix_100_table + c, 2);
+					i += 2;
+				}
+				if (output2 >= 10) {
+					const uint32_t c = output2 << 1;
+					// We can't use memcpy here: the decimal dot goes between these two digits.
+					buffer[index + olength - i] = radix_100_table[c + 1];
+					buffer[index] = radix_100_table[c];
+				}
+				else {
+					buffer[index] = (char)('0' + output2);
+				}
+
+				// Print decimal point if needed.
+				if (olength > 1) {
+					buffer[index + 1] = '.';
+					index += olength + 1;
+				}
+				else {
+					++index;
+				}
+
+				// Print the exponent.
+				buffer[index++] = 'E';
+				int32_t exp = v.exponent + (int32_t)olength - 1;
+				if (exp < 0) {
+					buffer[index++] = '-';
+					exp = -exp;
+				}
+
+				if (exp >= 100) {
+					const int32_t c = exp % 10;
+					memcpy(buffer + index, radix_100_table + 2 * (exp / 10), 2);
+					buffer[index + 2] = (char)('0' + c);
+					index += 3;
+				}
+				else if (exp >= 10) {
+					memcpy(buffer + index, radix_100_table + 2 * exp, 2);
+					index += 2;
+				}
+				else {
+					buffer[index++] = (char)('0' + exp);
+				}
+			}
+		}
+
+		buffer[index] = '\0';
+	}
+};
+
+
+void dcv(double x, char* buffer)
 {
-	auto v = jkj::grisu_exact(x, jkj::grisu_exact_nonfinite_handlers::assert_finite{},
-		jkj::grisu_exact_rounding_modes::to_even{});
-
-	// Step 5: Print the decimal representation.
-	int index = 0;
-	if (v.is_negative) {
-		buffer[index++] = '-';
-	}
-
-	uint64_t output = v.significand;
-	const uint32_t olength = decimalLength17(output);
-
-	// Print the decimal digits.
-	// The following code is equivalent to:
-	// for (uint32_t i = 0; i < olength - 1; ++i) {
-	//   const uint32_t c = output % 10; output /= 10;
-	//   result[index + olength - i] = (char) ('0' + c);
-	// }
-	// result[index] = '0' + output % 10;
-
-	uint32_t i = 0;
-	// We prefer 32-bit operations, even on 64-bit platforms.
-	// We have at most 17 digits, and uint32_t can store 9 digits.
-	// If output doesn't fit into uint32_t, we cut off 8 digits,
-	// so the rest will fit into uint32_t.
-	if ((output >> 32) != 0) {
-		// Expensive 64-bit division.
-		const uint64_t q = output / 100000000;
-		uint32_t output2 = ((uint32_t)output) - 100000000 * ((uint32_t)q);
-		output = q;
-
-		const uint32_t c = output2 % 10000;
-		output2 /= 10000;
-		const uint32_t d = output2 % 10000;
-		const uint32_t c0 = (c % 100) << 1;
-		const uint32_t c1 = (c / 100) << 1;
-		const uint32_t d0 = (d % 100) << 1;
-		const uint32_t d1 = (d / 100) << 1;
-		memcpy(buffer + index + olength - i - 1, radix_100_table + c0, 2);
-		memcpy(buffer + index + olength - i - 3, radix_100_table + c1, 2);
-		memcpy(buffer + index + olength - i - 5, radix_100_table + d0, 2);
-		memcpy(buffer + index + olength - i - 7, radix_100_table + d1, 2);
-		i += 8;
-	}
-	uint32_t output2 = (uint32_t)output;
-	while (output2 >= 10000) {
-#ifdef __clang__ // https://bugs.llvm.org/show_bug.cgi?id=38217
-		const uint32_t c = output2 - 10000 * (output2 / 10000);
-#else
-		const uint32_t c = output2 % 10000;
-#endif
-		output2 /= 10000;
-		const uint32_t c0 = (c % 100) << 1;
-		const uint32_t c1 = (c / 100) << 1;
-		memcpy(buffer + index + olength - i - 1, radix_100_table + c0, 2);
-		memcpy(buffer + index + olength - i - 3, radix_100_table + c1, 2);
-		i += 4;
-	}
-	if (output2 >= 100) {
-		const uint32_t c = (output2 % 100) << 1;
-		output2 /= 100;
-		memcpy(buffer + index + olength - i - 1, radix_100_table + c, 2);
-		i += 2;
-	}
-	if (output2 >= 10) {
-		const uint32_t c = output2 << 1;
-		// We can't use memcpy here: the decimal dot goes between these two digits.
-		buffer[index + olength - i] = radix_100_table[c + 1];
-		buffer[index] = radix_100_table[c];
-	}
-	else {
-		buffer[index] = (char)('0' + output2);
-	}
-
-	// Print decimal point if needed.
-	if (olength > 1) {
-		buffer[index + 1] = '.';
-		index += olength + 1;
-	}
-	else {
-		++index;
-	}
-
-	// Print the exponent.
-	buffer[index++] = 'e';
-	int32_t exp = v.exponent + (int32_t)olength - 1;
-	if (exp < 0) {
-		buffer[index++] = '-';
-		exp = -exp;
-	}
-
-	if (exp >= 100) {
-		const int32_t c = exp % 10;
-		memcpy(buffer + index, radix_100_table + 2 * (exp / 10), 2);
-		buffer[index + 2] = (char)('0' + c);
-		index += 3;
-	}
-	else if (exp >= 10) {
-		memcpy(buffer + index, radix_100_table + 2 * exp, 2);
-		index += 2;
-	}
-	else {
-		buffer[index++] = (char)('0' + exp);
-	}
-
-	buffer[index] = '\0';
+	jkj::grisu_exact(x, grisu_exact_handler{ buffer });
 }
 
-void fcv(float x) {
-	auto v = jkj::grisu_exact(x);
-
-	// Step 5: Print the decimal representation.
-	int index = 0;
-	if (v.is_negative) {
-		buffer[index++] = '-';
-	}
-
-	uint32_t output = v.significand;
-	const uint32_t olength = decimalLength9(output);
-
-#ifdef RYU_DEBUG
-	printf("DIGITS=%u\n", v.mantissa);
-	printf("OLEN=%u\n", olength);
-	printf("EXP=%u\n", v.exponent + olength);
-#endif
-
-	// Print the decimal digits.
-	// The following code is equivalent to:
-	// for (uint32_t i = 0; i < olength - 1; ++i) {
-	//   const uint32_t c = output % 10; output /= 10;
-	//   result[index + olength - i] = (char) ('0' + c);
-	// }
-	// result[index] = '0' + output % 10;
-	uint32_t i = 0;
-	while (output >= 10000) {
-#ifdef __clang__ // https://bugs.llvm.org/show_bug.cgi?id=38217
-		const uint32_t c = output - 10000 * (output / 10000);
-#else
-		const uint32_t c = output % 10000;
-#endif
-		output /= 10000;
-		const uint32_t c0 = (c % 100) << 1;
-		const uint32_t c1 = (c / 100) << 1;
-		memcpy(buffer + index + olength - i - 1, radix_100_table + c0, 2);
-		memcpy(buffer + index + olength - i - 3, radix_100_table + c1, 2);
-		i += 4;
-	}
-	if (output >= 100) {
-		const uint32_t c = (output % 100) << 1;
-		output /= 100;
-		memcpy(buffer + index + olength - i - 1, radix_100_table + c, 2);
-		i += 2;
-	}
-	if (output >= 10) {
-		const uint32_t c = output << 1;
-		// We can't use memcpy here: the decimal dot goes between these two digits.
-		buffer[index + olength - i] = radix_100_table[c + 1];
-		buffer[index] = radix_100_table[c];
-	}
-	else {
-		buffer[index] = (char)('0' + output);
-	}
-
-	// Print decimal point if needed.
-	if (olength > 1) {
-		buffer[index + 1] = '.';
-		index += olength + 1;
-	}
-	else {
-		++index;
-	}
-
-	// Print the exponent.
-	buffer[index++] = 'E';
-	int32_t exp = v.exponent + (int32_t)olength - 1;
-	if (exp < 0) {
-		buffer[index++] = '-';
-		exp = -exp;
-	}
-
-	if (exp >= 10) {
-		memcpy(buffer + index, radix_100_table + 2 * exp, 2);
-		index += 2;
-	}
-	else {
-		buffer[index++] = (char)('0' + exp);
-	}
-
-	buffer[index] = '\0';
+void fcv(float x, char* buffer) {
+	jkj::grisu_exact(x, grisu_exact_handler{ buffer });
 }
 
 static float int32Bits2Float(uint32_t bits) {
@@ -441,7 +459,8 @@ float generate_float(const benchmark_options& options, std::mt19937& mt32, uint3
 
 static int bench32(const benchmark_options& options) {
 	char bufferown[BUFFER_SIZE];
-	std::mt19937 mt32(12345);
+	char bufferown2[BUFFER_SIZE];
+	std::mt19937 mt32(std::random_device{}());
 	mean_and_variance mv1;
 	mean_and_variance mv2;
 	int throwaway = 0;
@@ -463,8 +482,8 @@ static int bench32(const benchmark_options& options) {
 			if (!options.ryu_only()) {
 				t1 = steady_clock::now();
 				for (int j = 0; j < options.iterations(); ++j) {
-					fcv(f);
-					throwaway += buffer[2];
+					fcv(f, bufferown2);
+					throwaway += bufferown2[2];
 				}
 				t2 = steady_clock::now();
 				delta2 = duration_cast<nanoseconds>(t2 - t1).count() / static_cast<double>(options.iterations());
@@ -480,8 +499,8 @@ static int bench32(const benchmark_options& options) {
 				}
 			}
 
-			if (!options.ryu_only() && strcmp(bufferown, buffer) != 0) {
-				printf("For %x %20s %20s\n", r, bufferown, buffer);
+			if (!options.ryu_only() && strcmp(bufferown, bufferown2) != 0) {
+				printf("For %x %20s %20s\n", r, bufferown, bufferown2);
 			}
 		}
 	}
@@ -506,8 +525,8 @@ static int bench32(const benchmark_options& options) {
 			if (!options.ryu_only()) {
 				t1 = steady_clock::now();
 				for (int i = 0; i < options.samples(); ++i) {
-					fcv(vec[i]);
-					throwaway += buffer[2];
+					fcv(vec[i], bufferown2);
+					throwaway += bufferown2[2];
 				}
 				t2 = steady_clock::now();
 				delta2 = duration_cast<nanoseconds>(t2 - t1).count() / static_cast<double>(options.samples());
@@ -553,7 +572,8 @@ double generate_double(const benchmark_options& options, std::mt19937& mt32, uin
 
 static int bench64(const benchmark_options& options) {
 	char bufferown[BUFFER_SIZE];
-	std::mt19937 mt32(12345);
+	char bufferown2[BUFFER_SIZE];
+	std::mt19937 mt32(std::random_device{}());
 	mean_and_variance mv1;
 	mean_and_variance mv2;
 	int throwaway = 0;
@@ -575,8 +595,8 @@ static int bench64(const benchmark_options& options) {
 			if (!options.ryu_only()) {
 				t1 = steady_clock::now();
 				for (int j = 0; j < options.iterations(); ++j) {
-					dcv(f);
-					throwaway += buffer[2];
+					dcv(f, bufferown2);
+					throwaway += bufferown2[2];
 				}
 				t2 = steady_clock::now();
 				delta2 = duration_cast<nanoseconds>(t2 - t1).count() / static_cast<double>(options.iterations());
@@ -592,8 +612,8 @@ static int bench64(const benchmark_options& options) {
 				}
 			}
 
-			if (!options.ryu_only() && strcmp(bufferown, buffer) != 0) {
-				printf("For %16" PRIX64 " %28s %28s\n", r, bufferown, buffer);
+			if (!options.ryu_only() && strcmp(bufferown, bufferown2) != 0) {
+				printf("For %16" PRIX64 " %28s %28s\n", r, bufferown, bufferown2);
 			}
 		}
 	}
@@ -618,8 +638,8 @@ static int bench64(const benchmark_options& options) {
 			if (!options.ryu_only()) {
 				t1 = steady_clock::now();
 				for (int i = 0; i < options.samples(); ++i) {
-					dcv(vec[i]);
-					throwaway += buffer[2];
+					dcv(vec[i], bufferown2);
+					throwaway += bufferown2[2];
 				}
 				t2 = steady_clock::now();
 				delta2 = duration_cast<nanoseconds>(t2 - t1).count() / static_cast<double>(options.samples());
