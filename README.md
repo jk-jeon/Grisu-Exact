@@ -19,6 +19,8 @@ But please be aware that ````grisu_exact.h```` uses some C++17 features (````if 
 # Performance
 In my machine, it defeats other contemporary algorithms including Ryu. Especially, Grisu-Exact is much faster than Ryu if the output string contains less digits. It is almost on par with Ryu when the output string contains the maximum possible number of digits. However, as noted before Grisu-Exact currently does not offer correct rounding guarantee. After implementing additional codes that will give this guarantee, it may become slower than now. I will also implement a feature that optionally disables this for better performance.
 
+![corei7_7700hq@2.80_win64_vc2019_randomdigit_time](benchmark.png)
+
 # Comprehensive Explanation of the Algorithm
 In preparation.
 
