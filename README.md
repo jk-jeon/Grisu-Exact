@@ -24,3 +24,6 @@ In preparation.
 
 # Notes
 There are currently some errors in the correctness proof. Altough I believe I can fix them shortly, this library is by no mean production-ready. Use it with your own risk.
+
+# License
+MIT
