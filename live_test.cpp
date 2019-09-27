@@ -2,23 +2,23 @@
 
 template <class Float>
 jkj::signed_fp_t<Float> decompose_float(Float x) {
-	using float_type_info = jkj::grisu_exact_detail::float_type_info<Float>;
+	using common_info = jkj::grisu_exact_detail::common_info<Float>;
 	jkj::signed_fp_t<Float> ret_value;
 
 	std::memcpy(&ret_value.significand, &x, sizeof(Float));
 
-	ret_value.is_negative = (ret_value.significand & float_type_info::sign_bit_mask) != 0;
-	ret_value.exponent = ((ret_value.significand << 1) >> (float_type_info::precision + 1));
-	ret_value.significand <<= (float_type_info::extended_precision -
-		float_type_info::precision - 1);
+	ret_value.is_negative = (ret_value.significand & common_info::sign_bit_mask) != 0;
+	ret_value.exponent = ((ret_value.significand << 1) >> (common_info::precision + 1));
+	ret_value.significand <<= (common_info::extended_precision -
+		common_info::precision - 1);
 
 	// Deal with normal/subnormal dichotomy
-	ret_value.significand |= (ret_value.exponent == 0 ? 0 : float_type_info::sign_bit_mask);
+	ret_value.significand |= (ret_value.exponent == 0 ? 0 : common_info::sign_bit_mask);
 
-	ret_value.exponent += (float_type_info::exponent_bias - float_type_info::extended_precision + 1);
+	ret_value.exponent += (common_info::exponent_bias - common_info::extended_precision + 1);
 
 	// x should be a finite number
-	assert(ret_value.exponent != 1 - float_type_info::exponent_bias);
+	assert(ret_value.exponent != 1 - common_info::exponent_bias);
 
 	return ret_value;
 }

@@ -10,12 +10,12 @@ void verify_delta_computation()
 		using float_type = typename decltype(type_tag)::float_type;
 
 		constexpr auto fdelta =
-			(typename float_type_info<float_type>::extended_significand_type)(3) <<
-			(float_type_info<float_type>::extended_precision - float_type_info<float_type>::precision - 3);
-		constexpr auto edge_case_boundary_bit = float_type_info<float_type>::edge_case_boundary_bit;
+			(typename common_info<float_type>::extended_significand_type)(3) <<
+			(common_info<float_type>::extended_precision - common_info<float_type>::precision - 3);
+		constexpr auto edge_case_boundary_bit = common_info<float_type>::edge_case_boundary_bit;
 
-		for (int k = float_type_info<float_type>::min_k;
-			k <= float_type_info<float_type>::max_k; ++k)
+		for (int k = common_info<float_type>::min_k;
+			k <= common_info<float_type>::max_k; ++k)
 		{
 			auto cache = get_cache<float_type>(k);
 
@@ -38,9 +38,9 @@ void verify_delta_computation()
 		return true;
 	};
 
-	if (verify_single_type(float_type_info<float>{}, "float"))
+	if (verify_single_type(common_info<float>{}, "float"))
 		std::cout << "delta computation for binary32: verified." << std::endl;
 
-	if (verify_single_type(float_type_info<double>{}, "double"))
+	if (verify_single_type(common_info<double>{}, "double"))
 		std::cout << "delta computation for binary64: verified." << std::endl;
 }

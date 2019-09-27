@@ -147,9 +147,9 @@ namespace jkj {
 			// e - (e+1)log10(2) + 1 = (e+1)(1 - log10(2)), so
 			// the following is an upper bound:
 			static constexpr std::size_t negative_k_max_bits =
-				float_type_info<Float>::extended_precision +
-				float_type_info<Float>::max_exponent + 1 -
-				floor_log10_pow2(float_type_info<Float>::max_exponent + 1);
+				common_info<Float>::extended_precision +
+				common_info<Float>::max_exponent + 1 -
+				floor_log10_pow2(common_info<Float>::max_exponent + 1);
 
 
 			// When k >= 0,
@@ -166,15 +166,15 @@ namespace jkj {
 			// -e - (e+1)log10(2) = -e(1 - log10(2)) - log10(2) < -(e+1)(1 - log10(2)), so
 			// the following is an upper bound:
 			static constexpr std::size_t positive_k_max_bits =
-				float_type_info<Float>::precision + 4 -
-				float_type_info<Float>::min_exponent;
+				common_info<Float>::precision + 4 -
+				common_info<Float>::min_exponent;
 
 
 			// Useful constants
 			static constexpr auto range =
-				(std::uint64_t(1) << (float_type_info<Float>::precision + 2)) - 1;
+				(std::uint64_t(1) << (common_info<Float>::precision + 2)) - 1;
 			static constexpr auto q_mp_m2 =
-				float_type_info<Float>::extended_precision - float_type_info<Float>::precision - 2;
+				common_info<Float>::extended_precision - common_info<Float>::precision - 2;
 		};
 
 		template <class Float, class F1, class F2>
@@ -186,7 +186,7 @@ namespace jkj {
 
 			bigint_type power_of_5 = 1;
 			int prev_k = 0;
-			for (int e = 3; e <= float_type_info<Float>::max_exponent; ++e) {
+			for (int e = 3; e <= common_info<Float>::max_exponent; ++e) {
 				auto k = -floor_log10_pow2(e + 1);
 				if (k != prev_k) {
 					assert(k == prev_k - 1);
@@ -243,7 +243,7 @@ namespace jkj {
 
 			bigint_type power_of_5 = 1;
 			int prev_k = 0;
-			for (int e = 2; e >= float_type_info<Float>::min_exponent; --e) {
+			for (int e = 2; e >= common_info<Float>::min_exponent; --e) {
 				auto k = -floor_log10_pow2(e + 1);
 				if (k != prev_k) {
 					assert(k == prev_k + 1);

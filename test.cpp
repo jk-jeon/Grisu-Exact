@@ -18,10 +18,6 @@ extern void generate_cache();
 //#define VERIFY_DELTA_COMPUTATION
 extern void verify_delta_computation();
 
-// Check if kappa is at least 2 for binary32 with q = 32
-//#define VERIFY_KAPPA_LOWER_BOUND
-extern void verify_kappa_lower_bound();
-
 // Generate random float's and test Grisu-Exact's output
 #define UNIFORM_RANDOM_TEST_FLOAT
 static std::size_t number_of_uniform_random_tests_float = 10000000;
@@ -64,12 +60,6 @@ int main()
 #ifdef VERIFY_DELTA_COMPUTATION
 	std::cout << "[Verifying delta computation...]\n";
 	verify_delta_computation();
-	std::cout << "Done.\n\n\n";
-#endif
-
-#ifdef VERIFY_KAPPA_LOWER_BOUND
-	std::cout << "[Verifying that 2 is a lower bound of kappa...]\n";
-	verify_kappa_lower_bound();
 	std::cout << "Done.\n\n\n";
 #endif
 

@@ -5,9 +5,9 @@
 template <class Float, class RandGen>
 Float uniformly_randomly_generate_float(RandGen& rg)
 {
-	using float_type_info = jkj::grisu_exact_detail::float_type_info<Float>;
+	using common_info = jkj::grisu_exact_detail::common_info<Float>;
 	using extended_significand_type =
-		typename float_type_info::extended_significand_type;
+		typename common_info::extended_significand_type;
 	using uniform_distribution = std::uniform_int_distribution<extended_significand_type>;
 
 	// Generate sign bit
@@ -15,14 +15,14 @@ Float uniformly_randomly_generate_float(RandGen& rg)
 
 	// Generate exponent bits
 	auto exponent_bits = uniform_distribution{ 0,
-		(extended_significand_type(1) << float_type_info::exponent_bits) - 2 }(rg);
+		(extended_significand_type(1) << common_info::exponent_bits) - 2 }(rg);
 
 	// Generate significand bits
 	auto significand_bits = uniform_distribution{ 0,
-		(extended_significand_type(1) << float_type_info::precision) - 1 }(rg);
+		(extended_significand_type(1) << common_info::precision) - 1 }(rg);
 
-	auto bit_representation = (sign_bit << (float_type_info::extended_precision - 1))
-		| (exponent_bits << (float_type_info::precision))
+	auto bit_representation = (sign_bit << (common_info::extended_precision - 1))
+		| (exponent_bits << (common_info::precision))
 		| significand_bits;
 
 	Float ret;
@@ -37,7 +37,7 @@ template <class Float, class TypenameString>
 void uniform_random_test(std::size_t number_of_tests, TypenameString&& type_name_string)
 {
 	using extended_significand_type =
-		typename jkj::grisu_exact_detail::float_type_info<Float>::extended_significand_type;
+		typename jkj::grisu_exact_detail::common_info<Float>::extended_significand_type;
 
 	char buffer[41];
 	std::mt19937_64 rg{ std::random_device{}() };
@@ -54,15 +54,15 @@ void uniform_random_test(std::size_t number_of_tests, TypenameString&& type_name
 
 		if (bits_original != bits_roundtrip) {
 			std::cout << "Roundtrip error detected! [original = "
-				<< x << " (0x" << std::hex << std::setfill('0')
-				<< std::setprecision(40);
+				<< std::setprecision(40)
+				<< x << " (0x" << std::hex << std::setfill('0');
 			if constexpr (sizeof(Float) == 4)
 				std::cout << std::setw(8);
 			else
 				std::cout << std::setw(16);
 			std::cout << bits_original << std::dec << "), roundtrip = "
-				<< roundtrip << " (0x" << std::hex << std::setfill('0')
-				<< std::setprecision(40);
+				<< std::setprecision(40)
+				<< roundtrip << " (0x" << std::hex << std::setfill('0');
 			if constexpr (sizeof(Float) == 4)
 				std::cout << std::setw(8);
 			else
@@ -74,7 +74,7 @@ void uniform_random_test(std::size_t number_of_tests, TypenameString&& type_name
 
 	if (succeeded) {
 		std::cout << "Uniform random test for " << type_name_string
-			<< " succeeded.\n";
+			<< " with " << number_of_tests << " examples succeeded.\n";
 	}
 }
 

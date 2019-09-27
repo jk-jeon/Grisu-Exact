@@ -187,8 +187,8 @@ void generate_cache()
 		using float_type = typename decltype(type_tag)::float_type;
 
 		out << "static constexpr " << cache_type_name_string << " cache[] = {";
-		for (int k = float_type_info<float_type>::min_k; k < 0; ++k) {
-			auto idx = std::size_t(k - float_type_info<float_type>::min_k);
+		for (int k = common_info<float_type>::min_k; k < 0; ++k) {
+			auto idx = std::size_t(k - common_info<float_type>::min_k);
 			auto value = bitset_to_uint<float_type>::convert(cache_bitset[idx]);
 
 			if (detect_overflow_and_increment(value)) {
@@ -200,8 +200,8 @@ void generate_cache()
 			out << ",";
 
 		}
-		for (int k = 0; k < float_type_info<float_type>::max_k; ++k) {
-			auto idx = std::size_t(k - float_type_info<float_type>::min_k);
+		for (int k = 0; k < common_info<float_type>::max_k; ++k) {
+			auto idx = std::size_t(k - common_info<float_type>::min_k);
 
 			out << "\n\t";
 			element_printer(out, bitset_to_uint<float_type>::convert(cache_bitset[idx]));
@@ -216,10 +216,10 @@ void generate_cache()
 
 	out.open("binary32_generated_cache.txt");
 	auto binary32_cache_bitset = generate_cache_bitset<
-		float_type_info<float>::cache_precision,
-		float_type_info<float>::min_k,
-		float_type_info<float>::max_k>();
-	write_file(out, float_type_info<float>{}, binary32_cache_bitset,
+		common_info<float>::cache_precision,
+		common_info<float>::min_k,
+		common_info<float>::max_k>();
+	write_file(out, common_info<float>{}, binary32_cache_bitset,
 		"std::uint64_t", "binary32",
 		[](std::uint64_t& value) {
 			++value;
@@ -232,10 +232,10 @@ void generate_cache()
 
 	out.open("binary64_generated_cache.txt");
 	auto binary64_cache_bitset = generate_cache_bitset<
-		float_type_info<double>::cache_precision,
-		float_type_info<double>::min_k,
-		float_type_info<double>::max_k>();
-	write_file(out, float_type_info<double>{}, binary64_cache_bitset,
+		common_info<double>::cache_precision,
+		common_info<double>::min_k,
+		common_info<double>::max_k>();
+	write_file(out, common_info<double>{}, binary64_cache_bitset,
 		"uint128", "binary64",
 		[](uint128& value) {
 			value = uint128(value.high(), value.low() + 1);

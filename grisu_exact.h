@@ -17,23 +17,6 @@
 #include <immintrin.h>
 #endif
 
-// Function inlining
-#if defined(__CUDA_ARCH__)
-#define GRISU_EXACT_FORCEINLINE __forceinline__
-#elif defined(_MSC_VER)
-#define GRISU_EXACT_FORCEINLINE __forceinline
-#elif defined(__GNUC__)
-#define GRISU_EXACT_FORCEINLINE inline __attribute__((__always_inline__))
-#elif defined(__CLANG__)
-#if __has_attribute(__always_inline__)
-#define GRISU_EXACT_FORCEINLINE inline __attribute__((__always_inline__))
-#else
-#define GRISU_EXACT_FORCEINLINE inline
-#endif
-#else
-#define GRISU_EXACT_FORCEINLINE inline
-#endif
-
 namespace jkj {
 	namespace grisu_exact_detail {
 		////////////////////////////////////////////////////////////////////////////////////////
@@ -74,7 +57,7 @@ namespace jkj {
 #endif
 		};
 
-		GRISU_EXACT_FORCEINLINE uint128 umul128(std::uint64_t x, std::uint64_t y) noexcept {
+		inline uint128 umul128(std::uint64_t x, std::uint64_t y) noexcept {
 #if defined(_MSC_VER)
 			uint128 result;
 			result.low_ = _umul128(x, y, &result.high_);
@@ -101,7 +84,7 @@ namespace jkj {
 #endif
 		}
 
-		GRISU_EXACT_FORCEINLINE std::uint64_t umul128_upper64(std::uint64_t x, std::uint64_t y) noexcept {
+		inline std::uint64_t umul128_upper64(std::uint64_t x, std::uint64_t y) noexcept {
 #if defined(_MSC_VER)
 			return __umulh(x, y);
 #elif (defined(__GNUC__) || defined(__clang__)) && defined(__SIZEOF_INT128__) && defined(__x86_64__)
@@ -127,7 +110,7 @@ namespace jkj {
 		}
 
 		// Get upper 128-bits of multiplication of a 64-bit unsigned integer and a 128-bit unsigned integer
-		GRISU_EXACT_FORCEINLINE uint128 umul192_upper128(std::uint64_t x, uint128 y) noexcept {
+		inline uint128 umul192_upper128(std::uint64_t x, uint128 y) noexcept {
 			auto g0 = umul128(x, y.high());
 			auto g10 = umul128_upper64(x, y.low());
 
@@ -145,7 +128,7 @@ namespace jkj {
 		}
 
 		// Get upper 64-bits of multiplication of a 32-bit unsigned integer and a 64-bit unsigned integer
-		GRISU_EXACT_FORCEINLINE std::uint64_t umul96_upper64(std::uint32_t x, std::uint64_t y) noexcept {
+		inline std::uint64_t umul96_upper64(std::uint32_t x, std::uint64_t y) noexcept {
 			auto g0 = std::uint64_t(x) * (y >> 32);
 			auto g1 = std::uint64_t(x) * (y & 0xffffffff);
 			return g0 + (g1 >> 32);
@@ -188,7 +171,7 @@ namespace jkj {
 		////////////////////////////////////////////////////////////////////////////////////////
 
 		template <class Float>
-		struct float_type_info {
+		struct common_info {
 			using float_type = Float;
 
 			static_assert(std::numeric_limits<Float>::is_iec559 &&
@@ -226,9 +209,17 @@ namespace jkj {
 			static constexpr int max_exponent =
 				std::numeric_limits<Float>::max_exponent - int(extended_precision);
 			static_assert(min_exponent < 0 && max_exponent > 0 && -min_exponent >= max_exponent);
+			
+			static constexpr int alpha = 1;
+			static constexpr int gamma = 4;
 
-			static constexpr int min_k = -floor_log10_pow2(max_exponent + 1);
-			static constexpr int max_k = -floor_log10_pow2(min_exponent + 1);
+			static constexpr int initial_kappa =
+				sizeof(Float) == 4 ? 4 : 7;
+
+			static_assert(alpha > 0 && initial_kappa >= gamma);
+
+			static constexpr int min_k = -floor_log10_pow2(max_exponent + 1 - alpha);
+			static constexpr int max_k = -floor_log10_pow2(min_exponent + 1 - alpha);
 
 			static constexpr std::size_t cache_precision = extended_precision * 2;
 
@@ -238,13 +229,27 @@ namespace jkj {
 				uint128>;
 
 			static constexpr int zero_fractional_part_min_exponent_normal =
-				sizeof(Float) == 4 ? -11 : -15;
+				sizeof(Float) == 4 ? -10 : -14;
 			static constexpr int zero_fractional_part_min_exponent_edge =
-				sizeof(Float) == 4 ? -9 : -13;
+				sizeof(Float) == 4 ? -10 : -14;
 			static constexpr int zero_fractional_part_max_exponent_normal =
-				sizeof(Float) == 4 ? 32 : 75;
+				sizeof(Float) == 4 ? 36 : 79;
 			static constexpr int zero_fractional_part_min_exponent_delta_normal =
-				sizeof(Float) == 4 ? -12 : -16;
+				sizeof(Float) == 4 ? -12 : -17;
+
+			static constexpr extended_significand_type compute_power(
+				extended_significand_type b, unsigned int e)
+			{
+				extended_significand_type r = 1;
+				for (unsigned int i = 0; i < e; ++i)
+					r *= b;
+				return r;
+			}
+
+			template <unsigned int e>
+			static constexpr auto power_of_5 = compute_power(5, e);
+			template <unsigned int e>
+			static constexpr auto power_of_10 = compute_power(10, e);
 		};
 
 
@@ -257,8 +262,7 @@ namespace jkj {
 
 		template <>
 		struct cache_holder<float> {
-			static constexpr std::uint64_t cache[] = {
-				0xcad2f7f5359a3b3f,
+			static constexpr common_info<float>::cache_entry_type cache[] = {
 				0xfd87b5f28300ca0e,
 				0x9e74d1b791e07e49,
 				0xc612062576589ddb,
@@ -334,14 +338,14 @@ namespace jkj {
 				0x8f7e32ce7bea5c6f,
 				0xb35dbf821ae4f38b,
 				0xe0352f62a19e306e,
-				0x8c213d9da502de45
+				0x8c213d9da502de45,
+				0xaf298d050e4395d6
 			};
 		};
 
 		template <>
 		struct cache_holder<double> {
-			static constexpr uint128 cache[] = {
-				{ 0xf97ae3d0d2446f25, 0x4b0573286b44ad1e },
+			static constexpr common_info<double>::cache_entry_type cache[] = {
 				{ 0x9becce62836ac577, 0x4ee367f9430aec33 },
 				{ 0xc2e801fb244576d5, 0x229c41f793cda740 },
 				{ 0xf3a20279ed56d48a, 0x6b43527578c11110 },
@@ -962,83 +966,69 @@ namespace jkj {
 		};
 
 		template <class Float>
-		constexpr typename float_type_info<Float>::cache_entry_type const& get_cache(int k) {
-			assert(k >= float_type_info<Float>::min_k &&
-				k <= float_type_info<Float>::max_k);
-			return cache_holder<Float>::cache[std::size_t(k - float_type_info<Float>::min_k)];
+		constexpr typename common_info<Float>::cache_entry_type const& get_cache(int k) {
+			assert(k >= common_info<Float>::min_k &&
+				k <= common_info<Float>::max_k);
+			return cache_holder<Float>::cache[std::size_t(k - common_info<Float>::min_k)];
 		}
 
 
 		////////////////////////////////////////////////////////////////////////////////////////
 		// Utilities for computing the integer part of multiplication with 10^k
 		////////////////////////////////////////////////////////////////////////////////////////
-
+		
 		template <class Float>
 		struct compute_mul_helper;
 
 		template <>
-		struct compute_mul_helper<float> {
-			using extended_significand_type = float_type_info<float>::extended_significand_type;
-			using cache_entry_type = float_type_info<float>::cache_entry_type;
-
-			static constexpr std::size_t q_mp_1 =
-				float_type_info<float>::extended_precision -
-				float_type_info<float>::precision - 1;
+		struct compute_mul_helper<float> : common_info<float> {
+			static constexpr std::size_t q_mp_1 = extended_precision - precision - 1;
 
 			static std::pair<extended_significand_type, unsigned char>
-				compute_mul(extended_significand_type f, cache_entry_type const& cache, int three_minus_beta)
+				compute_mul(extended_significand_type f, cache_entry_type const& cache, int beta)
 			{
 				auto r = umul96_upper64(f, cache);
 				constexpr auto mask = cache_entry_type(-1) >> 32;
+				assert(beta != 0);
 				return{
 					extended_significand_type(r >> 32),
-					(unsigned char)(((r & mask) >> three_minus_beta) >> 29)
+					(unsigned char)((r & mask) >> (32 - beta))
 				};
 			}
 
 			static std::pair<extended_significand_type, unsigned char>
-				compute_delta(extended_significand_type edge_case_boundary_bit,
-					cache_entry_type const& cache, int three_minus_beta)
+				compute_delta(bool is_edge_case, cache_entry_type const& cache, int beta)
 			{
 				cache_entry_type r;
-				if (edge_case_boundary_bit == 0)
-					r = cache;
-				else
+				if (is_edge_case)
 					r = (cache >> 1) + (cache >> 2);
+				else
+					r = cache;
 
 				constexpr auto mask = cache_entry_type(-1) >> q_mp_1;
 				return{
-					extended_significand_type(r >>
-						(float_type_info<float>::cache_precision - q_mp_1)),
-					(unsigned char)((r & mask) >>
-						(float_type_info<float>::cache_precision - q_mp_1 - 3 + three_minus_beta))
+					extended_significand_type(r >> (cache_precision - q_mp_1)),
+					(unsigned char)((r & mask) >> (cache_precision - q_mp_1 - beta))
 				};
 			}
 		};
 
 		template <>
-		struct compute_mul_helper<double> {
-			using extended_significand_type = float_type_info<double>::extended_significand_type;
-			using cache_entry_type = float_type_info<double>::cache_entry_type;
-
-			static constexpr std::size_t q_mp_1 =
-				float_type_info<double>::extended_precision -
-				float_type_info<double>::precision - 1;
+		struct compute_mul_helper<double> : common_info<double> {
+			static constexpr std::size_t q_mp_1 = extended_precision - precision - 1;
 
 			static std::pair<extended_significand_type, unsigned char>
-				compute_mul(extended_significand_type f, cache_entry_type const& cache, int three_minus_beta)
+				compute_mul(extended_significand_type f, cache_entry_type const& cache, int beta)
 			{
 				auto r = umul192_upper128(f, cache);
 				return{
 					r.high(),
-					(unsigned char)((r.low() >>
-						(float_type_info<double>::extended_precision - 3)) >> three_minus_beta)
+					(unsigned char)(r.low() >> (64 - beta))
 				};
 			}
 
 			static std::pair<extended_significand_type, unsigned char>
-				compute_delta(bool is_edge_case,
-					cache_entry_type const& cache, int three_minus_beta)
+				compute_delta(bool is_edge_case, cache_entry_type const& cache, int beta)
 			{
 				extended_significand_type r;
 				if (is_edge_case)
@@ -1048,154 +1038,9 @@ namespace jkj {
 
 				constexpr auto mask = extended_significand_type(-1) >> q_mp_1;
 				return{
-					r >> (float_type_info<double>::extended_precision - q_mp_1),
-					(unsigned char)((r & mask) >>
-						(float_type_info<double>::extended_precision - q_mp_1 - 3 + three_minus_beta))
+					r >> (extended_precision - q_mp_1),
+					(unsigned char)((r & mask) >> (extended_precision - q_mp_1 - beta))
 				};
-			}
-		};
-
-		template <class Float>
-		struct compare_fractional {
-			using extended_significand_type =
-				typename float_type_info<Float>::extended_significand_type;
-			using cache_entry_type =
-				typename float_type_info<Float>::cache_entry_type;
-
-			static bool is_z2_smaller_than_delta2(
-				extended_significand_type fminus,
-				int three_minus_beta, cache_entry_type const& cache)
-			{
-				auto [mul_upper, mul_lower] = compute_mul_helper<Float>::compute_mul(fminus, cache, three_minus_beta);
-				if (three_minus_beta == 3)
-					return (mul_upper & 1) != 0;
-				else
-					return (mul_lower & 1) != 0;
-			}
-
-			// Compile-time power of 5 computation
-			static constexpr extended_significand_type compute_power_of_5(unsigned int e) {
-				extended_significand_type r = 1;
-				for (unsigned int i = 0; i < e; ++i)
-					r *= 5;
-				return r;
-			}
-			template <unsigned int e>
-			static constexpr extended_significand_type power_of_5 = compute_power_of_5(e);
-
-			static bool is_product_integer(
-				extended_significand_type f, int e_plus_1, int minus_k)
-			{
-				// k is non-negative
-				if (e_plus_1 <= 3 &&
-					e_plus_1 >= float_type_info<Float>::zero_fractional_part_min_exponent_normal + 1)
-				{
-					return true;
-				}
-				// k is negative but not too big
-				else if (e_plus_1 >= 4 &&
-					e_plus_1 <= float_type_info<Float>::zero_fractional_part_max_exponent_normal + 1)
-				{
-					// For IEEE-754 binary32
-					if constexpr (sizeof(Float) == 4) {
-						// Fully table-based approach
-						assert(1 <= minus_k && minus_k <= 10);
-						switch (minus_k) {
-						case 1:
-							return f % power_of_5<1> == 0;
-						case 2:
-							return f % power_of_5<2> == 0;
-						case 3:
-							return f % power_of_5<3> == 0;
-						case 4:
-							return f % power_of_5<4> == 0;
-						case 5:
-							return f % power_of_5<5> == 0;
-						case 6:
-							return f % power_of_5<6> == 0;
-						case 7:
-							return f % power_of_5<7> == 0;
-						case 8:
-							return f % power_of_5<8> == 0;
-						case 9:
-							return f % power_of_5<9> == 0;
-						default:	// case 10:
-							return f % power_of_5<10> == 0;
-						}
-					}
-					// For IEEE-754 binary64
-					else {
-						// Cut into two parts and then appply the table-based approach
-						assert(1 <= minus_k && minus_k <= 23);
-						if (minus_k >= 12) {
-							if (f % power_of_5<12> == 0) {
-								f /= power_of_5<12>;
-								minus_k -= 12;
-							}
-							else
-								return false;
-						}
-						assert(0 <= minus_k && minus_k <= 11);
-						switch (minus_k) {
-						case 0:
-							return true;
-						case 1:
-							return f % power_of_5<1> == 0;
-						case 2:
-							return f % power_of_5<2> == 0;
-						case 3:
-							return f % power_of_5<3> == 0;
-						case 4:
-							return f % power_of_5<4> == 0;
-						case 5:
-							return f % power_of_5<5> == 0;
-						case 6:
-							return f % power_of_5<6> == 0;
-						case 7:
-							return f % power_of_5<7> == 0;
-						case 8:
-							return f % power_of_5<8> == 0;
-						case 9:
-							return f % power_of_5<9> == 0;
-						case 10:
-							return f % power_of_5<10> == 0;
-						default:	// case 11:
-							return f % power_of_5<11> == 0;
-						}
-					}
-				}
-				else
-					return false;
-			}
-
-			static bool is_z2_same_as_delta2(
-				extended_significand_type fminus,
-				int e_plus_1, int minus_k)
-			{
-				// Normal case
-				if (fminus !=
-					(float_type_info<Float>::sign_bit_mask - float_type_info<Float>::edge_case_boundary_bit))
-				{
-					return is_product_integer(fminus, e_plus_1, minus_k);
-				}
-				// Edge case
-				else {
-					return e_plus_1 <= 3 &&
-						e_plus_1 >= float_type_info<Float>::zero_fractional_part_min_exponent_edge + 1;
-				}
-			}
-
-			static bool is_delta_integer(bool is_edge_case, int e_plus_1) {
-				// Edge case
-				if (is_edge_case) {
-					return e_plus_1 <= 3 &&
-						e_plus_1 >= float_type_info<Float>::zero_fractional_part_min_exponent_edge + 1;
-				}
-				// Normal case
-				else {
-					return e_plus_1 <= 3 &&
-						e_plus_1 >= float_type_info<Float>::zero_fractional_part_min_exponent_delta_normal + 1;
-				}
 			}
 		};
 	}
@@ -1208,7 +1053,7 @@ namespace jkj {
 	template <class Float>
 	struct fp_t {
 		using extended_significand_type =
-			typename grisu_exact_detail::float_type_info<Float>::extended_significand_type;
+			typename grisu_exact_detail::common_info<Float>::extended_significand_type;
 
 		extended_significand_type	significand;
 		int							exponent;
@@ -1233,11 +1078,11 @@ namespace jkj {
 	// second indicates that the right boundary is contained.
 	namespace grisu_exact_rounding_modes {
 		template <class Float>
-		using float_type_info = grisu_exact_detail::float_type_info<Float>;
+		using common_info = grisu_exact_detail::common_info<Float>;
 
 		template <class Float>
 		using extended_significand_type =
-			typename float_type_info<Float>::extended_significand_type;
+			typename common_info<Float>::extended_significand_type;
 
 		// In order to introduce the concrete type of Float without
 		// explicit template argument indication
@@ -1246,25 +1091,25 @@ namespace jkj {
 			extended_significand_type<Float> bit_representation;
 		};
 
-		struct to_even {
+		struct nearest_to_even {
 			template <class Float>
 			std::pair<bool, bool> operator()(tagged_holder<Float> br) const {
 				return{ br.bit_representation % 2 == 0, br.bit_representation % 2 == 0 };
 			}
 		};
 
-		struct toward_zero {
+		struct nearest_toward_zero {
 			template <class Float>
 			std::pair<bool, bool> operator()(tagged_holder<Float>) const {
 				return{ false, true };
 			}
 		};
 
-		struct downward {
+		struct nearest_downward {
 			template <class Float>
 			std::pair<bool, bool> operator()(tagged_holder<Float> br) const {
 				// For positive
-				if ((br.bit_representation & float_type_info<Float>::sign_bit_mask) == 0)
+				if ((br.bit_representation & common_info<Float>::sign_bit_mask) == 0)
 					return{ false, true };
 				// For negative
 				else
@@ -1272,11 +1117,11 @@ namespace jkj {
 			}
 		};
 
-		struct upward {
+		struct nearest_upward {
 			template <class Float>
 			std::pair<bool, bool> operator()(tagged_holder<Float> br) const {
 				// For positive
-				if ((br.bit_representation & float_type_info<Float>::sign_bit_mask) == 0)
+				if ((br.bit_representation & common_info<Float>::sign_bit_mask) == 0)
 					return{ true, false };
 				// For negative
 				else
@@ -1286,29 +1131,10 @@ namespace jkj {
 
 		// Always contain both boundaries;
 		// may produce inexact results, but may produce faster code
-		struct fast {
+		struct nearest_fast {
 			template <class Float>
 			std::pair<bool, bool> operator()(tagged_holder<Float>) const {
 				return{ true, true };
-			}
-		};
-
-		// Choose the correct rounding mode on runtime
-		struct runtime {
-			template <class Float>
-			std::pair<bool, bool> operator()(tagged_holder<Float> br) const {
-				auto rounding_mode = std::fegetround();
-				switch (rounding_mode) {
-				case FE_DOWNWARD:
-					return downward{}(br);
-				case FE_TONEAREST:
-					return to_even{}(br);
-				case FE_TOWARDZERO:
-					return toward_zero{}(br);
-				default:
-					assert(rounding_mode == FE_UPWARD);
-					return upward{}(br);
-				}
 			}
 		};
 	}
@@ -1316,10 +1142,166 @@ namespace jkj {
 	// Get sign/decimal significand/decimal exponent from
 	// the bit representation of a floating-point number
 	template <class Float>
-	struct grisu_exact_impl {
-		using float_type_info = typename grisu_exact_detail::float_type_info<Float>;
-		using extended_significand_type = typename float_type_info::extended_significand_type;
+	class grisu_exact_impl :
+		private grisu_exact_detail::compute_mul_helper<Float>
+	{
+		using common_info = grisu_exact_detail::common_info<Float>;
 
+		using extended_significand_type =
+			typename common_info::extended_significand_type;
+		using cache_entry_type =
+			typename common_info::cache_entry_type;
+
+		using common_info::precision;
+		using common_info::extended_precision;
+		using common_info::sign_bit_mask;
+		using common_info::exponent_bits;
+		using common_info::exponent_bias;
+		using common_info::exponent_bits_mask;
+		using common_info::boundary_bit;
+		using common_info::edge_case_boundary_bit;
+		using common_info::alpha;
+		using common_info::gamma;
+		using common_info::initial_kappa;
+		using common_info::zero_fractional_part_min_exponent_normal;
+		using common_info::zero_fractional_part_min_exponent_edge;
+		using common_info::zero_fractional_part_max_exponent_normal;
+		using common_info::zero_fractional_part_min_exponent_delta_normal;
+		using common_info::compute_power;
+		using grisu_exact_detail::compute_mul_helper<Float>::compute_mul;
+		using grisu_exact_detail::compute_mul_helper<Float>::compute_delta;
+
+		template <unsigned int e>
+		static constexpr extended_significand_type power_of_5 = compute_power(5, e);
+
+		template <unsigned int e>
+		static constexpr extended_significand_type power_of_10 = compute_power(10, e);
+
+		static bool is_z2_smaller_than_delta2(
+			extended_significand_type fminus,
+			int beta, cache_entry_type const& cache)
+		{
+			auto [mul_upper, mul_lower] = compute_mul(fminus, cache, beta);
+			return (mul_lower & 1) != 0;
+		}
+
+		static bool is_product_integer(
+			extended_significand_type f, int exponent, int minus_k)
+		{
+			// k is non-negative
+			if (exponent <= 3 &&
+				exponent >= common_info::zero_fractional_part_min_exponent_normal)
+			{
+				return true;
+			}
+			// k is negative but not too big
+			else if (exponent >= 4 &&
+				exponent <= common_info::zero_fractional_part_max_exponent_normal)
+			{
+				// For IEEE-754 binary32
+				if constexpr (sizeof(Float) == 4) {
+					// Fully table-based approach
+					assert(0 <= minus_k && minus_k <= 10);
+					switch (minus_k) {
+					case 0:
+						return f % power_of_5<0> == 0;
+					case 1:
+						return f % power_of_5<1> == 0;
+					case 2:
+						return f % power_of_5<2> == 0;
+					case 3:
+						return f % power_of_5<3> == 0;
+					case 4:
+						return f % power_of_5<4> == 0;
+					case 5:
+						return f % power_of_5<5> == 0;
+					case 6:
+						return f % power_of_5<6> == 0;
+					case 7:
+						return f % power_of_5<7> == 0;
+					case 8:
+						return f % power_of_5<8> == 0;
+					case 9:
+						return f % power_of_5<9> == 0;
+					default:	// case 10:
+						return f % power_of_5<10> == 0;
+					}
+				}
+				// For IEEE-754 binary64
+				else {
+					// Cut into two parts and then appply the table-based approach
+					assert(0 <= minus_k && minus_k <= 23);
+					if (minus_k >= 12) {
+						if (f % power_of_5<12> == 0) {
+							f /= power_of_5<12>;
+							minus_k -= 12;
+						}
+						else
+							return false;
+					}
+					assert(0 <= minus_k && minus_k <= 11);
+					switch (minus_k) {
+					case 0:
+						return true;
+					case 1:
+						return f % power_of_5<1> == 0;
+					case 2:
+						return f % power_of_5<2> == 0;
+					case 3:
+						return f % power_of_5<3> == 0;
+					case 4:
+						return f % power_of_5<4> == 0;
+					case 5:
+						return f % power_of_5<5> == 0;
+					case 6:
+						return f % power_of_5<6> == 0;
+					case 7:
+						return f % power_of_5<7> == 0;
+					case 8:
+						return f % power_of_5<8> == 0;
+					case 9:
+						return f % power_of_5<9> == 0;
+					case 10:
+						return f % power_of_5<10> == 0;
+					default:	// case 11:
+						return f % power_of_5<11> == 0;
+					}
+				}
+			}
+			else
+				return false;
+		}
+
+		static bool is_z2_same_as_delta2(
+			extended_significand_type fminus,
+			int exponent, int minus_k)
+		{
+			// Normal case
+			if (fminus != (sign_bit_mask - edge_case_boundary_bit))
+			{
+				return is_product_integer(fminus, exponent, minus_k);
+			}
+			// Edge case
+			else {
+				return exponent <= 3 &&
+					exponent >= zero_fractional_part_min_exponent_edge;
+			}
+		}
+
+		static bool is_delta_integer(bool is_edge_case, int exponent) {
+			// Edge case
+			if (is_edge_case) {
+				return exponent <= 3 &&
+					exponent >= zero_fractional_part_min_exponent_edge;
+			}
+			// Normal case
+			else {
+				return exponent <= 3 &&
+					exponent >= zero_fractional_part_min_exponent_delta_normal;
+			}
+		}
+
+	public:
 		extended_significand_type bit_representation;
 		bool contain_left_boundary;
 		bool contain_right_boundary;
@@ -1328,43 +1310,42 @@ namespace jkj {
 
 		extended_significand_type extract_significand() const noexcept {
 			constexpr auto significand_bits_mask =
-				(extended_significand_type(1) << float_type_info::precision) - 1;
+				(extended_significand_type(1) << precision) - 1;
 			return bit_representation & significand_bits_mask;
 		}
 
 		bool is_finite() const noexcept {
-			constexpr auto exponent_bits_mask = float_type_info::exponent_bits_mask;
 			return (bit_representation & exponent_bits_mask) != exponent_bits_mask;
 		}
 
 		bool is_nonzero() const noexcept {
-			return (bit_representation & ~float_type_info::sign_bit_mask) != 0;
+			return (bit_representation & ~sign_bit_mask) != 0;
 		}
 
 		// Allows positive and negative zeros
 		bool is_subnormal() const noexcept {
-			constexpr auto exponent_bits_mask = float_type_info::exponent_bits_mask;
+			constexpr auto exponent_bits_mask = exponent_bits_mask;
 			return (bit_representation & exponent_bits_mask) == 0;
 		}
 
 		// Allows negative zero and negative NaN's, but not allow positive zero
 		bool is_negative() const noexcept {
-			return (bit_representation & float_type_info::sign_bit_mask) != 0;
+			return (bit_representation & sign_bit_mask) != 0;
 		}
 		
 		// Allows positive zero and positive NaN's, but not allow negative zero
 		bool is_positive() const noexcept {
-			return (bit_representation & float_type_info::sign_bit_mask) == 0;
+			return (bit_representation & sign_bit_mask) == 0;
 		}
 
 		bool is_positive_infinity() const noexcept {
-			constexpr auto positive_infinity = float_type_info::exponent_bits_mask;
+			constexpr auto positive_infinity = exponent_bits_mask;
 			return bit_representation == positive_infinity;
 		}
 
 		bool is_negative_infinity() const noexcept {
-			constexpr auto negative_infinity = float_type_info::exponent_bits_mask |
-				float_type_info::sign_bit_mask;
+			constexpr auto negative_infinity = exponent_bits_mask |
+				sign_bit_mask;
 			return bit_representation == negative_infinity;
 		}
 
@@ -1381,8 +1362,7 @@ namespace jkj {
 			if (!is_nan())
 				return false;
 
-			auto quiet_or_signal_indicator =
-				extended_significand_type(1) << (float_type_info::precision - 1);
+			auto quiet_or_signal_indicator = extended_significand_type(1) << (precision - 1);
 			auto quiet_or_signal = bit_representation & quiet_or_signal_indicator;
 
 			constexpr auto a_quiet_nan = std::numeric_limits<Float>::quiet_NaN();
@@ -1397,171 +1377,187 @@ namespace jkj {
 			return is_nan() && !is_quiet_nan();
 		}
 
-		static constexpr std::size_t nan_payload_length = float_type_info::precision - 1;
+		static constexpr std::size_t nan_payload_length = precision - 1;
 		std::bitset<nan_payload_length> get_nan_payload() const noexcept {
 			constexpr auto payload_mask =
-				(extended_significand_type(1) << (float_type_info::precision - 1)) - 1;
+				(extended_significand_type(1) << (precision - 1)) - 1;
 			return{ bit_representation & payload_mask };
 		}
 
 		//// The main algorithm assumes the input is a normal/subnormal finite number
 
 		signed_fp_t<Float> operator()() const {
-			using namespace jkj::grisu_exact_detail;
-
 			signed_fp_t<Float> ret_value;
 
-			ret_value.is_negative = (bit_representation & float_type_info::sign_bit_mask) != 0;
-			auto significand = bit_representation <<
-				(float_type_info::extended_precision - float_type_info::precision - 1);
+			ret_value.is_negative = (bit_representation & sign_bit_mask) != 0;
+			auto significand = bit_representation << (extended_precision - precision - 1);
 
-			int exponent_plus_1;
-			{
-				auto exponent = int((bit_representation << 1) >> (float_type_info::precision + 1));
-
-				// Deal with normal/subnormal dichotomy
-				if (exponent != 0) {
-					significand |= float_type_info::sign_bit_mask;
-					exponent_plus_1 = exponent + float_type_info::exponent_bias -
-						int(float_type_info::extended_precision) + 2;
-				}
-				else {
-					exponent_plus_1 = float_type_info::exponent_bias -
-						int(float_type_info::extended_precision) + 3;
-				}
+			auto exponent = int((bit_representation << 1) >> (precision + 1));
+			// Deal with normal/subnormal dichotomy
+			if (exponent != 0) {
+				significand |= sign_bit_mask;
+				exponent = exponent + exponent_bias - int(extended_precision) + 1;
+			}
+			else {
+				exponent = exponent_bias - int(extended_precision) + 2;
 			}
 
 			// Compute the boundaries
-			auto const fplus = significand | float_type_info::boundary_bit;
+			auto const fplus = significand | boundary_bit;
 			bool const is_edge_case =
-				fplus == (float_type_info::sign_bit_mask | float_type_info::boundary_bit);
+				fplus == (sign_bit_mask | boundary_bit);
 			auto const fminus = is_edge_case ?
-				float_type_info::sign_bit_mask - float_type_info::edge_case_boundary_bit :
-				fplus - (float_type_info::boundary_bit << 1);
+				sign_bit_mask - edge_case_boundary_bit :
+				fplus - (boundary_bit << 1);
 
 			// Compute k and beta
-			int const minus_k = floor_log10_pow2(exponent_plus_1);
-			int const three_minus_beta = 3 - (exponent_plus_1 + floor_log2_pow10(-minus_k));
-			assert(three_minus_beta >= 0 && three_minus_beta <= 3);
+			using jkj::grisu_exact_detail::floor_log10_pow2;
+			using jkj::grisu_exact_detail::floor_log2_pow10;
+			int const minus_k = floor_log10_pow2(exponent + 1 - alpha);
+			int const beta = exponent + floor_log2_pow10(-minus_k) + 1;
+			assert(beta >= alpha && beta <= gamma);
 
 			// Compute z1 and delta1
+			using jkj::grisu_exact_detail::get_cache;
 			auto const& cache = get_cache<Float>(-minus_k);
-			auto const [z11, z12] = compute_mul_helper<Float>::compute_mul(fplus, cache, three_minus_beta);
-			auto [delta11, delta12] = compute_mul_helper<Float>::compute_delta(
-				is_edge_case, cache, three_minus_beta);
+			auto const [z11, z12] = compute_mul(fplus, cache, beta);
+			auto [delta11, delta12] = compute_delta(is_edge_case, cache, beta);
 
 			// Computation of the following is delayed
-			z2_vs_delta2_t z2_vs_delta2 = z2_vs_delta2_t::not_compared_yet;
+			auto z2_vs_delta2 = z2_vs_delta2_t::not_compared_yet;
 
-			// Compute s3 and r1,3
-			auto const t = z11 / 125;
-			auto const u = z11 % 125;
-			ret_value.significand = t >> three_minus_beta;
-			auto const v = t ^ (ret_value.significand << three_minus_beta);
-			auto r = 125 * v + u;
-			auto divisor = extended_significand_type(125) << three_minus_beta;
-			
-			// Check if kappa is 2
+			// Compute s and r for initial kappa
+			auto const t = z11 / power_of_5<initial_kappa>;
+			auto const u = z11 % power_of_5<initial_kappa>;
+			ret_value.significand = t >> (initial_kappa - beta);
+			auto const v = t ^ (ret_value.significand << (initial_kappa - beta));
+			auto r = power_of_5<initial_kappa> * v + u;
+			auto divisor = power_of_5<initial_kappa> << (initial_kappa - beta);
+
+			ret_value.exponent = initial_kappa + minus_k;
+
+			// We've got too much? or too less?
 			if (r > delta11) {
-				return when_kappa_is_2(ret_value, is_edge_case, exponent_plus_1, minus_k, three_minus_beta,
-					fplus, delta11, z12, delta12, r);
+				goto downward_search_label;
 			}
 			else if (r == delta11) {
 				if (z12 > delta12) {
-					return when_kappa_is_2(ret_value, is_edge_case, exponent_plus_1, minus_k, three_minus_beta,
-						fplus, delta11, z12, delta12, r);
+					goto downward_search_label;
 				}
 				else if (z12 == delta12) {
-					if (!compare_fractional<Float>::is_z2_smaller_than_delta2(
-						fminus, three_minus_beta, cache))
+					if (!is_z2_smaller_than_delta2(fminus, beta, cache) &&
+						(!contain_left_boundary || !is_z2_same_as_delta2(fminus, exponent, minus_k)))
 					{
-						if (contain_left_boundary) {
-							if (!compare_fractional<Float>::is_z2_same_as_delta2(
-								fminus, exponent_plus_1, minus_k))
-							{
-								return when_kappa_is_2(ret_value, is_edge_case, exponent_plus_1, minus_k, three_minus_beta,
-									fplus, delta11, z12, delta12, r);
-							}
-						}
-						else {
-							return when_kappa_is_2(ret_value, is_edge_case, exponent_plus_1, minus_k, three_minus_beta,
-								fplus, delta11, z12, delta12, r);
-						}
+						z2_vs_delta2 = z2_vs_delta2_t::z2_larger;
+						goto downward_search_label;
 					}
 					z2_vs_delta2 = z2_vs_delta2_t::z2_smaller;
 				}
 			}
-
-			// Now the initial value of kappa is 3
-			ret_value.exponent = 3 + minus_k;
 			
-			// Perform binary search
-			if (contain_left_boundary) {
-				if constexpr (sizeof(Float) == 4) {
-					perform_search<true, 10000, 4>(ret_value, z2_vs_delta2, exponent_plus_1, minus_k, three_minus_beta,
-						fminus, delta11, z12, delta12, r, divisor, cache);
-					perform_search<true, 100, 2>(ret_value, z2_vs_delta2, exponent_plus_1, minus_k, three_minus_beta,
-						fminus, delta11, z12, delta12, r, divisor, cache);
-					perform_search<true, 10, 1>(ret_value, z2_vs_delta2, exponent_plus_1, minus_k, three_minus_beta,
-						fminus, delta11, z12, delta12, r, divisor, cache);
-				}
-				else {
-					static_assert(sizeof(Float) == 8);
-					if (!perform_search<true, 1'00000000'00000000, 16>(
-						ret_value, z2_vs_delta2, exponent_plus_1, minus_k, three_minus_beta,
-						fminus, delta11, z12, delta12, r, divisor, cache))
-					{
-						perform_search<true, 100000000, 8>(ret_value, z2_vs_delta2, exponent_plus_1, minus_k, three_minus_beta,
-							fminus, delta11, z12, delta12, r, divisor, cache);
-						perform_search<true, 10000, 4>(ret_value, z2_vs_delta2, exponent_plus_1, minus_k, three_minus_beta,
-							fminus, delta11, z12, delta12, r, divisor, cache);
-						perform_search<true, 100, 2>(ret_value, z2_vs_delta2, exponent_plus_1, minus_k, three_minus_beta,
-							fminus, delta11, z12, delta12, r, divisor, cache);
-					}
-					perform_search<true, 10, 1>(ret_value, z2_vs_delta2, exponent_plus_1, minus_k, three_minus_beta,
-						fminus, delta11, z12, delta12, r, divisor, cache);
-				}
+			// Search kappa upward
+			if constexpr (sizeof(Float) == 4) {
+				increasing_search<4>(ret_value, z2_vs_delta2, exponent, minus_k, beta,
+					fminus, delta11, z12, delta12, r, divisor, cache);
+				increasing_search<2>(ret_value, z2_vs_delta2, exponent, minus_k, beta,
+					fminus, delta11, z12, delta12, r, divisor, cache);
+				increasing_search<1>(ret_value, z2_vs_delta2, exponent, minus_k, beta,
+					fminus, delta11, z12, delta12, r, divisor, cache);
 			}
-			else {				
-				if constexpr (sizeof(Float) == 4) {
-					perform_search<false, 10000, 4>(ret_value, z2_vs_delta2, exponent_plus_1, minus_k, three_minus_beta,
-						fminus, delta11, z12, delta12, r, divisor, cache);
-					perform_search<false, 100, 2>(ret_value, z2_vs_delta2, exponent_plus_1, minus_k, three_minus_beta,
-						fminus, delta11, z12, delta12, r, divisor, cache);
-					perform_search<false, 10, 1>(ret_value, z2_vs_delta2, exponent_plus_1, minus_k, three_minus_beta,
-						fminus, delta11, z12, delta12, r, divisor, cache);
-				}
-				else {
-					static_assert(sizeof(Float) == 8);
-					if (!perform_search<false, 1'00000000'00000000, 16>(
-						ret_value, z2_vs_delta2, exponent_plus_1, minus_k, three_minus_beta,
-						fminus, delta11, z12, delta12, r, divisor, cache))
-					{
-						perform_search<false, 100000000, 8>(ret_value, z2_vs_delta2, exponent_plus_1, minus_k, three_minus_beta,
-							fminus, delta11, z12, delta12, r, divisor, cache);
-						perform_search<false, 10000, 4>(ret_value, z2_vs_delta2, exponent_plus_1, minus_k, three_minus_beta,
-							fminus, delta11, z12, delta12, r, divisor, cache);
-						perform_search<false, 100, 2>(ret_value, z2_vs_delta2, exponent_plus_1, minus_k, three_minus_beta,
-							fminus, delta11, z12, delta12, r, divisor, cache);
-					}
-					perform_search<false, 10, 1>(ret_value, z2_vs_delta2, exponent_plus_1, minus_k, three_minus_beta,
-						fminus, delta11, z12, delta12, r, divisor, cache);
-				}
+			else {
+				static_assert(sizeof(Float) == 8);
+				increasing_search<8>(ret_value, z2_vs_delta2, exponent, minus_k, beta,
+					fminus, delta11, z12, delta12, r, divisor, cache);
+				increasing_search<4>(ret_value, z2_vs_delta2, exponent, minus_k, beta,
+					fminus, delta11, z12, delta12, r, divisor, cache);
+				increasing_search<2>(ret_value, z2_vs_delta2, exponent, minus_k, beta,
+					fminus, delta11, z12, delta12, r, divisor, cache);
+				increasing_search<1>(ret_value, z2_vs_delta2, exponent, minus_k, beta,
+					fminus, delta11, z12, delta12, r, divisor, cache);
 			}
 
 			// If right boundary is not contained, we should check if z mod 10^kappa = 0
 			if (!contain_right_boundary) {
 				if (r == 0) {
 					// Note that r == 0 implies that z11 = divisor * ret_value.significand;
-					// Hence, the last line "divisor *= ten_to_the_lambda" of perform_search
+					// Hence, the last line "divisor *= ten_to_the_lambda" of increasing_search
 					// should not have produced an overflow.
 					if (z12 == 0) {
-						if (compare_fractional<Float>::is_product_integer(
-							fplus, exponent_plus_1, minus_k))
+						if (is_product_integer(fplus, exponent, minus_k))
 						{
-							avoid_right_boundary(ret_value, is_edge_case,
-								exponent_plus_1, delta11, delta12, divisor);
+							// Decrease kappa until 10^kappa becomes smaller than delta
+							// If left boundary is included, 10^kappa can also be equal to delta
+							bool integral_left_end = is_delta_integer(is_edge_case, exponent);
+
+							while (true) {
+								if (divisor < delta11)
+									break;
+								else if (divisor == delta11) {
+									if (delta12 != 0)
+										break;
+									else if (!integral_left_end || contain_left_boundary)
+										break;
+								}
+
+								ret_value.significand *= 10;
+								divisor /= 10;
+								--ret_value.exponent;
+							}
+							--ret_value.significand;
 						}
+					}
+				}
+			}
+
+			return ret_value;
+
+		downward_search_label:
+			// r is guaranteed not to overflow, and so is delta; so restore them
+			r <<= beta;
+			r += z12;
+			auto delta1 = (delta11 << beta) + delta12;
+
+			// Perform binary search
+			if constexpr (sizeof(Float) == 4) {
+				decreasing_search<1>(ret_value, z2_vs_delta2, exponent, minus_k, beta, fminus, delta1, r, cache);
+			}
+			else {
+				static_assert(sizeof(Float) == 8);
+				decreasing_search<2>(ret_value, z2_vs_delta2, exponent, minus_k, beta, fminus, delta1, r, cache);
+				decreasing_search<1>(ret_value, z2_vs_delta2, exponent, minus_k, beta, fminus, delta1, r, cache);
+			}
+
+			// Decrease kappa by 1
+			ret_value.significand *= 10;
+			ret_value.significand += r / power_of_10<initial_kappa - 1>;
+			r %= power_of_10<initial_kappa - 1>;
+			--ret_value.exponent;
+			delta1 *= 10;
+
+			// If right boundary is not contained, we should check if z mod 10^kappa = 0
+			if (!contain_right_boundary) {
+				if (r == 0) {
+					if (is_product_integer(fplus, exponent, minus_k))
+					{
+						// Decrease kappa until 10^kappa becomes smaller than delta
+						// If left boundary is included, 10^kappa can also be equal to delta
+						bool integral_left_end = is_delta_integer(is_edge_case, exponent);
+
+						auto divisor = power_of_10<initial_kappa>;
+
+						while (true) {
+							if (divisor < delta1)
+								break;
+							else if (divisor == delta1) {
+								if (!integral_left_end || contain_left_boundary)
+									break;
+							}
+
+							ret_value.significand *= 10;
+							divisor /= 10;
+							--ret_value.exponent;
+						}
+						--ret_value.significand;
 					}
 				}
 			}
@@ -1575,103 +1571,23 @@ namespace jkj {
 			z2_larger = 1,
 			z2_smaller = 2
 		};
-		
-		// Right boundary correction routine
-		void avoid_right_boundary(
-			signed_fp_t<Float>& ret_value,
-			bool is_edge_case, int exponent_plus_1,
-			extended_significand_type delta11,
-			unsigned char delta12,
-			extended_significand_type divisor) const
-		{
-			using namespace grisu_exact_detail;
 
-			// Decrease kappa until 10^kappa becomes smaller than delta
-			// If left boundary is included, 10^kappa can also be equal to delta
-			bool is_delta_integer = compare_fractional<Float>::is_delta_integer(
-				is_edge_case, exponent_plus_1);
-
-			while (true) {
-				if (divisor < delta11)
-					break;
-				else if (divisor == delta11) {
-					if (delta12 != 0)
-						break;
-					else if (!is_delta_integer || contain_left_boundary)
-						break;
-				}
-
-				ret_value.significand *= 10;
-				divisor /= 10;
-				--ret_value.exponent;
-			}
-			--ret_value.significand;
-		};
-
-		signed_fp_t<Float> when_kappa_is_2(
-			signed_fp_t<Float>& ret_value,
-			bool is_edge_case, int exponent_plus_1, int minus_k, int three_minus_beta,
-			extended_significand_type fplus,
-			extended_significand_type delta11,
-			unsigned char z12, unsigned char delta12,
-			extended_significand_type r) const
-		{
-			using namespace grisu_exact_detail;
-
-			ret_value.exponent = 2 + minus_k;
-			r = (r << (3 - three_minus_beta)) + z12;
-			ret_value.significand *= 10;
-			ret_value.significand += (r / 100);
-
-			// If right boundary is not contained, we should check if z mod 10^kappa = 0
-			if (!contain_right_boundary && (r % 100) == 0) {
-				if (compare_fractional<Float>::is_product_integer(
-					fplus, exponent_plus_1, minus_k))
-				{
-					avoid_right_boundary(ret_value, is_edge_case, exponent_plus_1,
-						(delta11 << (3 - three_minus_beta)) + delta12, 0, 100);
-				}
-			}
-
-			return ret_value;
-		};
-
-		// Perform binary search to find kappa
-		// Returns true if updated kapp, false otherwise.
-		template <bool contain_left_boundary_constexpr,
-			extended_significand_type ten_to_the_lambda, extended_significand_type lambda>
-		bool perform_search(
+		// Perform binary search to find kappa upward
+		// Returns true if kappa + lambda is a possible candidate
+		template <extended_significand_type lambda>
+		bool increasing_search(
 			signed_fp_t<Float>& ret_value,
 			z2_vs_delta2_t& z2_vs_delta2,
-			int exponent_plus_1, int minus_k, int three_minus_beta,
+			int exponent, int minus_k, int beta,
 			extended_significand_type fminus,
 			extended_significand_type delta11,
 			unsigned char z12, unsigned char delta12,
 			extended_significand_type& r,
 			extended_significand_type& divisor,
-			typename float_type_info::cache_entry_type const& cache) const
+			cache_entry_type const& cache) const
 		{
-			using namespace grisu_exact_detail;
-
-			extended_significand_type quotient, new_r;
-
-			if constexpr (lambda != 16) {
-				quotient = ret_value.significand / ten_to_the_lambda;
-				new_r = r + divisor * (ret_value.significand % ten_to_the_lambda);
-			}
-			else {
-				// Usual Barrett reduction does not work well with lambda == 16 because
-				// in that case we need to check if the remainder is larger than or equal to 10^16.
-				// Therefore, it is better to compute division by 10^16 using
-				// two successive divisions by 10^8.
-				quotient = ret_value.significand / 100000000;
-				new_r = ret_value.significand % 100000000;
-				new_r += 100000000 * (quotient % 100000000);
-				quotient /= 100000000;
-
-				new_r *= divisor;
-				new_r += r;
-			}
+			auto quotient = ret_value.significand / power_of_10<lambda>;
+			auto new_r = r + divisor * (ret_value.significand % power_of_10<lambda>);
 
 			// Check if delta is still greater than or equal to the remainder
 			// delta should be strictly greater if the left boundary is not contained
@@ -1681,40 +1597,19 @@ namespace jkj {
 				if (delta12 < z12)
 					return false;
 				else if (delta12 == z12) {
-					if constexpr (contain_left_boundary_constexpr) {
-						switch (z2_vs_delta2) {
-						case z2_vs_delta2_t::z2_larger:
-							return false;
+					switch (z2_vs_delta2) {
+					case z2_vs_delta2_t::z2_larger:
+						return false;
 
-						case z2_vs_delta2_t::not_compared_yet:
-							if (!compare_fractional<Float>::is_z2_smaller_than_delta2(
-								fminus, three_minus_beta, cache))
-							{
-								if (!compare_fractional<Float>::is_z2_same_as_delta2(
-									fminus, exponent_plus_1, minus_k))
-								{
-									z2_vs_delta2 = z2_vs_delta2_t::z2_larger;
-									return false;
-								}
-							}
-							z2_vs_delta2 = z2_vs_delta2_t::z2_smaller;
+					case z2_vs_delta2_t::not_compared_yet:
+						if (!is_z2_smaller_than_delta2(fminus, beta, cache) &&
+							(!contain_left_boundary || !is_z2_same_as_delta2(fminus, exponent, minus_k)))
+						{
+							z2_vs_delta2 = z2_vs_delta2_t::z2_larger;
+							return false;
 						}
+						z2_vs_delta2 = z2_vs_delta2_t::z2_smaller;
 					}
-					else {
-						switch (z2_vs_delta2) {
-						case z2_vs_delta2_t::z2_larger:
-							return false;
-
-						case z2_vs_delta2_t::not_compared_yet:
-							if (!compare_fractional<Float>::is_z2_smaller_than_delta2(
-								fminus, three_minus_beta, cache))
-							{
-								z2_vs_delta2 = z2_vs_delta2_t::z2_larger;
-								return false;
-							}
-							z2_vs_delta2 = z2_vs_delta2_t::z2_smaller;
-						}
-					}					
 				}
 			}
 
@@ -1722,10 +1617,54 @@ namespace jkj {
 			ret_value.significand = quotient;
 			ret_value.exponent += lambda;
 			r = new_r;
-			divisor *= ten_to_the_lambda;
-
+			divisor *= power_of_10<lambda>;
 			return true;
 		};
+
+		// Perform binary search to find kappa downward
+		// Returns true if kappa - lambda is a possible candidate
+		template <extended_significand_type lambda>
+		bool decreasing_search(
+			signed_fp_t<Float>& ret_value,
+			z2_vs_delta2_t& z2_vs_delta2,
+			int exponent, int minus_k, int beta,
+			extended_significand_type fminus,
+			extended_significand_type& delta1,
+			extended_significand_type& r,
+			cache_entry_type const& cache) const
+		{
+			auto quotient = r / power_of_10<initial_kappa - lambda>;
+			auto new_r = r % power_of_10<initial_kappa - lambda>;
+
+			// Check if the remainder is still greater than or equal to the delta
+			// remainder should be strictly greater if the left boundary is contained
+
+			if (new_r < delta1)
+				return true;
+			else if (delta1 == new_r) {
+				switch (z2_vs_delta2) {
+				case z2_vs_delta2_t::z2_smaller:
+					return true;
+
+				case z2_vs_delta2_t::not_compared_yet:
+					if (is_z2_smaller_than_delta2(fminus, beta, cache) ||
+						(contain_left_boundary && is_z2_same_as_delta2(fminus, exponent, minus_k)))
+					{
+						z2_vs_delta2 = z2_vs_delta2_t::z2_smaller;
+						return true;
+					}
+					z2_vs_delta2 = z2_vs_delta2_t::z2_larger;
+				}
+			}
+
+			// Decrease kappa by lambda
+			r = new_r * power_of_10<lambda>;
+			delta1 *= power_of_10<lambda>;
+			ret_value.significand *= power_of_10<lambda>;
+			ret_value.significand += quotient;
+			ret_value.exponent -= lambda;
+			return false;
+		}
 	};
 
 	// Determines the control flow of the algorithm depending on the type of the input
@@ -1751,7 +1690,7 @@ namespace jkj {
 
 	template <class Float,
 		class CaseHandler = grisu_exact_case_handlers::assert_finite,
-		class RoundingMode = grisu_exact_rounding_modes::runtime
+		class RoundingMode = grisu_exact_rounding_modes::nearest_to_even
 	>
 	auto grisu_exact(Float x,
 		CaseHandler&& case_handler = {},
@@ -1764,12 +1703,10 @@ namespace jkj {
 			rounding_mode(grisu_exact_rounding_modes::tagged_holder<Float>{ impl.bit_representation });
 
 		constexpr auto exponent_bits_mask =
-			grisu_exact_detail::float_type_info<Float>::exponent_bits_mask;
+			grisu_exact_detail::common_info<Float>::exponent_bits_mask;
 
 		return case_handler(impl);
 	}
 }
-
-#undef GRISU_EXACT_FORCEINLINE
 
 #endif

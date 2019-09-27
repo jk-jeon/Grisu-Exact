@@ -313,13 +313,13 @@ struct grisu_exact_handler {
 void dcv(double x, char* buffer)
 {
 	jkj::grisu_exact(x, grisu_exact_handler{ buffer },
-		jkj::grisu_exact_rounding_modes::to_even{});
+		jkj::grisu_exact_rounding_modes::nearest_to_even{});
 }
 
 void fcv(float x, char* buffer)
 {
 	jkj::grisu_exact(x, grisu_exact_handler{ buffer },
-		jkj::grisu_exact_rounding_modes::to_even{});
+		jkj::grisu_exact_rounding_modes::nearest_to_even{});
 }
 
 static float int32Bits2Float(uint32_t bits) {
