@@ -19,17 +19,17 @@ void verify_delta_computation()
 		{
 			auto cache = get_cache<float_type>(k);
 
-			auto [delta11_orthodox, delta12_orthodox]
-				= compute_mul_helper<float_type>::compute_mul(fdelta, cache, 3);
+			auto deltai_orthodox
+				= compute_mul_helper<float_type>::compute_mul(fdelta, cache, -common_info<float_type>::gamma);
 
-			auto [delta11_fast, delta12_fast]
-				= compute_mul_helper<float_type>::compute_delta(edge_case_boundary_bit, cache, 3);
+			auto deltai_fast
+				= compute_mul_helper<float_type>::compute_delta(edge_case_boundary_bit, cache, -common_info<float_type>::gamma);
 
-			if (delta11_orthodox != delta11_fast || delta12_orthodox != delta12_fast) {
+			if (deltai_orthodox != deltai_fast) {
 				std::cout << "compute_delta_edge<" << type_name_string
-					<< ">: mismatch! [k = " << k << ", correct delta1 = ("
-					<< delta11_orthodox << ", " << delta12_orthodox << "), computed delta1 = ("
-					<< delta11_fast << ", " << delta12_fast << ")]\n";
+					<< ">: mismatch! [k = " << k << ", correct deltai = "
+					<< deltai_orthodox << ", computed deltai = ("
+					<< deltai_fast << "]\n";
 
 				return false;
 			}
