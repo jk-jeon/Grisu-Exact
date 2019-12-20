@@ -236,7 +236,7 @@ namespace jkj {
 				-floor_log10_pow2(-(int(extended_precision) + gamma)) - 1;
 			static_assert(0 <= min_kappa && min_kappa <= max_kappa);
 
-			static constexpr int initial_kappa = sizeof(Float) == 4 ? 2 : 2;
+			static constexpr int initial_kappa = sizeof(Float) == 4 ? 2 : 3;
 			static_assert(min_kappa <= initial_kappa && initial_kappa <= max_kappa);
 
 			static constexpr int min_k = -floor_log10_pow2(max_exponent + 1 - alpha);
