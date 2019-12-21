@@ -1508,28 +1508,29 @@ namespace jkj {
 
 		boundary_adjustment_and_return_label:
 			// If right boundary is not contained, we should check if z mod 10^kappa = 0
-			if (!contain_right_boundary) {
-				if (r == 0) {
-					if (is_product_integer(fplus, exponent, minus_k))
-					{
-						// Decrease kappa until 10^kappa becomes smaller than delta
-						// If left boundary is included, 10^kappa can also be equal to delta
-						bool integral_left_end = is_delta_integer(is_edge_case, exponent);
-
-						while (true) {
-							if (divisor < deltai)
-								break;
-							else if (divisor == deltai) {
-								if (!integral_left_end || contain_left_boundary)
-									break;
+			if (!contain_right_boundary && r == 0) {
+				if (is_product_integer(fplus, exponent, minus_k)) {
+					// Decrease kappa until 10^kappa becomes smaller than delta
+					// If left boundary is included, 10^kappa can also be equal to delta
+					while (true) {
+						if (divisor < deltai)
+							break;
+						else if (divisor == deltai) {
+							if (!contain_left_boundary &&
+								is_delta_integer(is_edge_case, exponent))
+							{
+								ret_value.significand *= 10;
+								divisor /= 10;
+								--ret_value.exponent;
 							}
-
-							ret_value.significand *= 10;
-							divisor /= 10;
-							--ret_value.exponent;
+							break;
 						}
-						--ret_value.significand;
+
+						ret_value.significand *= 10;
+						divisor /= 10;
+						--ret_value.exponent;
 					}
+					--ret_value.significand;
 				}
 			}
 
