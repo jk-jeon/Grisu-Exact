@@ -1,4 +1,4 @@
-function [] = plot_digit_benchmark( filename )
+function [avg] = plot_digit_benchmark( filename )
 
 output_filename = replace(filename, '.csv', '.pdf');
 
