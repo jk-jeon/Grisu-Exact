@@ -1,6 +1,8 @@
 # Grisu-Exact
 A variant of Grisu algorithm producing the shortest and correctly rounded output always, inspired by Ryu algorithm
 
+This library is a reference implementation of Grisu-Exact in C++.
+
 # Introduction
 This algorithm generates a pair of integers from a floating-point number: the decimal significand and the decimal exponent of the input floating-point number. These integers can then be used for string generation of decimal representation of the input floating-point number, the procedure commonly called ````ftoa```` or ````dtoa````.
 
