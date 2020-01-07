@@ -17,7 +17,7 @@ You can just drop ````grisu_exact.h```` in your include directory and include it
 But please be aware that ````grisu_exact.h```` uses some C++17 features (````if constexpr````, for example).
 
 # Performance
-In my machine, it defeats other contemporary algorithms including Ryu. Especially, Grisu-Exact is much faster than Ryu if the output string contains small number of digits. It is slightly faster than Ryu when the output string contains the maximum possible number of digits. However, as noted before Grisu-Exact currently does not offer correct rounding guarantee although Ryu guarantess it. After implementing additional codes that will give this guarantee, it may become slower than now. Perhaps users can optionally disable this feature for better performance.
+In my machine, it defeats other contemporary algorithms including Ryu. Especially, Grisu-Exact is much faster than Ryu if the output string contains small number of digits. It is slightly faster than Ryu when the output string contains the maximum possible number of digits. However, as noted before Grisu-Exact currently does not offer correct rounding guarantee unlike Ryu. After implementing additional codes that will give this guarantee, it may become slower than now. Perhaps users can optionally disable this feature for better performance.
 
 ![corei7_7700hq@2.80_win64_vc2019_randomdigit_time](benchmark.png)
 
@@ -25,7 +25,7 @@ In my machine, it defeats other contemporary algorithms including Ryu. Especiall
 In preparation.
 
 # Notes
-There are currently some errors in the correctness proof. Altough I believe I can fix them shortly, this library is by no mean production-ready. Use it with your own risk.
+There are currently some errors in the correctness proof. Although I believe I can fix them shortly, this library is by no mean production-ready. Use it with your own risk.
 
 # License
 MIT

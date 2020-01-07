@@ -1,0 +1,198 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="tests">
+      <UniqueIdentifier>{df718fdb-71f0-4aac-b3c5-5c947faae0e1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="tests\Headers">
+      <UniqueIdentifier>{7c635823-5a55-439b-90ec-bfbfe4010ce8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="benchmark">
+      <UniqueIdentifier>{5bc6837e-c95d-4228-8b74-a3457f206058}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="benchmark\ryu">
+      <UniqueIdentifier>{6d9e1fba-c933-454e-be31-7f4b4dd42e25}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="fp_to_chars">
+      <UniqueIdentifier>{f57bdbcf-7d31-4616-b494-31103da25c7f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="benchmark\milo">
+      <UniqueIdentifier>{097cf5e6-a53d-44af-ad25-6b211855eb5e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="benchmark\floaxie">
+      <UniqueIdentifier>{6ec2cb51-2c9f-4afd-92a6-475408afd692}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\tests\bigint.h">
+      <Filter>tests\Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\tests\random_float.h">
+      <Filter>tests\Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\grisu_exact.h" />
+    <ClInclude Include="..\benchmark\ryu\common.h">
+      <Filter>benchmark\ryu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\benchmark\ryu\d2fixed_full_table.h">
+      <Filter>benchmark\ryu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\benchmark\ryu\d2s.h">
+      <Filter>benchmark\ryu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\benchmark\ryu\d2s_full_table.h">
+      <Filter>benchmark\ryu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\benchmark\ryu\d2s_intrinsics.h">
+      <Filter>benchmark\ryu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\benchmark\ryu\d2s_small_table.h">
+      <Filter>benchmark\ryu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\benchmark\ryu\digit_table.h">
+      <Filter>benchmark\ryu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\benchmark\ryu\f2s_full_table.h">
+      <Filter>benchmark\ryu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\benchmark\ryu\ryu.h">
+      <Filter>benchmark\ryu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\benchmark\ryu\ryu2.h">
+      <Filter>benchmark\ryu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\fp_to_chars.h" />
+    <ClInclude Include="..\benchmark\benchmark.h">
+      <Filter>benchmark</Filter>
+    </ClInclude>
+    <ClInclude Include="..\benchmark\milo\dtoa_milo.h">
+      <Filter>benchmark\milo</Filter>
+    </ClInclude>
+    <ClInclude Include="..\benchmark\msinttypes\inttypes.h">
+      <Filter>benchmark\milo</Filter>
+    </ClInclude>
+    <ClInclude Include="..\benchmark\msinttypes\stdint.h">
+      <Filter>benchmark\milo</Filter>
+    </ClInclude>
+    <ClInclude Include="..\benchmark\floaxie\atof.h">
+      <Filter>benchmark\floaxie</Filter>
+    </ClInclude>
+    <ClInclude Include="..\benchmark\floaxie\bit_ops.h">
+      <Filter>benchmark\floaxie</Filter>
+    </ClInclude>
+    <ClInclude Include="..\benchmark\floaxie\cached_power.h">
+      <Filter>benchmark\floaxie</Filter>
+    </ClInclude>
+    <ClInclude Include="..\benchmark\floaxie\conversion_status.h">
+      <Filter>benchmark\floaxie</Filter>
+    </ClInclude>
+    <ClInclude Include="..\benchmark\floaxie\default_fallback.h">
+      <Filter>benchmark\floaxie</Filter>
+    </ClInclude>
+    <ClInclude Include="..\benchmark\floaxie\diy_fp.h">
+      <Filter>benchmark\floaxie</Filter>
+    </ClInclude>
+    <ClInclude Include="..\benchmark\floaxie\fraction.h">
+      <Filter>benchmark\floaxie</Filter>
+    </ClInclude>
+    <ClInclude Include="..\benchmark\floaxie\ftoa.h">
+      <Filter>benchmark\floaxie</Filter>
+    </ClInclude>
+    <ClInclude Include="..\benchmark\floaxie\grisu.h">
+      <Filter>benchmark\floaxie</Filter>
+    </ClInclude>
+    <ClInclude Include="..\benchmark\floaxie\huge_val.h">
+      <Filter>benchmark\floaxie</Filter>
+    </ClInclude>
+    <ClInclude Include="..\benchmark\floaxie\integer_of_size.h">
+      <Filter>benchmark\floaxie</Filter>
+    </ClInclude>
+    <ClInclude Include="..\benchmark\floaxie\k_comp.h">
+      <Filter>benchmark\floaxie</Filter>
+    </ClInclude>
+    <ClInclude Include="..\benchmark\floaxie\krosh.h">
+      <Filter>benchmark\floaxie</Filter>
+    </ClInclude>
+    <ClInclude Include="..\benchmark\floaxie\memwrap.h">
+      <Filter>benchmark\floaxie</Filter>
+    </ClInclude>
+    <ClInclude Include="..\benchmark\floaxie\powers_ten.h">
+      <Filter>benchmark\floaxie</Filter>
+    </ClInclude>
+    <ClInclude Include="..\benchmark\floaxie\powers_ten_double.h">
+      <Filter>benchmark\floaxie</Filter>
+    </ClInclude>
+    <ClInclude Include="..\benchmark\floaxie\powers_ten_single.h">
+      <Filter>benchmark\floaxie</Filter>
+    </ClInclude>
+    <ClInclude Include="..\benchmark\floaxie\prettify.h">
+      <Filter>benchmark\floaxie</Filter>
+    </ClInclude>
+    <ClInclude Include="..\benchmark\floaxie\print.h">
+      <Filter>benchmark\floaxie</Filter>
+    </ClInclude>
+    <ClInclude Include="..\benchmark\floaxie\static_pow.h">
+      <Filter>benchmark\floaxie</Filter>
+    </ClInclude>
+    <ClInclude Include="..\benchmark\floaxie\type_punning_cast.h">
+      <Filter>benchmark\floaxie</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\tests\generate_cache.cpp">
+      <Filter>tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\tests\live_test.cpp">
+      <Filter>tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\tests\uniform_random_perf_test.cpp">
+      <Filter>tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\tests\uniform_random_test.cpp">
+      <Filter>tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\tests\verify_cache_length.cpp">
+      <Filter>tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\tests\verify_delta_computation.cpp">
+      <Filter>tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\tests\verify_log_computation.cpp">
+      <Filter>tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\benchmark\ryu\d2fixed.c">
+      <Filter>benchmark\ryu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\benchmark\ryu\d2s.c">
+      <Filter>benchmark\ryu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\benchmark\ryu\f2s.c">
+      <Filter>benchmark\ryu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\fp_to_chars\fp_to_chars.cpp">
+      <Filter>fp_to_chars</Filter>
+    </ClCompile>
+    <ClCompile Include="..\tests\misc_test.cpp">
+      <Filter>tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\benchmark\benchmark.cpp">
+      <Filter>benchmark</Filter>
+    </ClCompile>
+    <ClCompile Include="..\benchmark\grisu_exact.cpp">
+      <Filter>benchmark</Filter>
+    </ClCompile>
+    <ClCompile Include="..\benchmark\grisu_exact_wo_correct_rounding.cpp">
+      <Filter>benchmark</Filter>
+    </ClCompile>
+    <ClCompile Include="..\benchmark\ryu.cpp">
+      <Filter>benchmark</Filter>
+    </ClCompile>
+    <ClCompile Include="..\tests\main.cpp" />
+    <ClCompile Include="..\benchmark\floaxie.cpp">
+      <Filter>benchmark</Filter>
+    </ClCompile>
+    <ClCompile Include="..\benchmark\milo.cpp">
+      <Filter>benchmark</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>
