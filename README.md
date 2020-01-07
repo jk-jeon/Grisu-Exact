@@ -55,9 +55,20 @@ auto v = jkj::grisu_exact(x);
 ````
 
 # Performance
-In my machine, it defeats or is on par with other contemporary algorithms including Ryu. Especially, Grisu-Exact is much faster than Ryu if the output string contains small number of digits. It is slightly slower (or faster depending on the situation) than Ryu when the output string contains near the maximum possible number of digits. The source code for the benchmrk below is available [here](https://github.com/jk-jeon/dtoa-benchmark). There is also a different benchmark included in this repository.
+In my machine, it defeats or is on par with other contemporary algorithms including Ryu. Especially, Grisu-Exact is much faster than Ryu if the output string contains small number of digits. It can perform slightly slower or faster depending on the situation than Ryu when the output string contains near the maximum possible number of digits.
 
-![corei7_7700hq@2.80_win64_vc2019_randomdigit_time](other_files/benchmark.png)
+The following benchmark result is obtained using Milo's dtoa benchmark framework ([https://github.com/miloyip/dtoa-benchmark](https://github.com/miloyip/dtoa-benchmark)). The source code is available [here](https://github.com/jk-jeon/dtoa-benchmark).
+
+![corei7_7700hq@2.80_win64_vc2019_randomdigit_time](other_files/milo_benchmark.png)
+
+There is also another benchmark done by myself:
+![digits_benchmark_binary32](benchmark_results/digits_benchmark_binary32.png)
+![digits_benchmark_binary64](benchmark_results/digits_benchmark_binary64.png)
+(top: benchmark for ````float```` data, bottom: benchmark for ````double```` data)
+
+Here is another performance plot with uniformly randomly generated ````float````(top) or ````double````(bottom) data:
+![uniform_benchmark_binary32](benchmark_results/uniform_benchmark_binary32.png)
+![uniform_benchmark_binary64](benchmark_results/uniform_benchmark_binary64.png)
 
 # Comprehensive Explanation of the Algorithm
 Please see [this file](https://github.com/jk-jeon/Grisu-Exact/blob/master/other_files/Grisu-Exact.pdf).
