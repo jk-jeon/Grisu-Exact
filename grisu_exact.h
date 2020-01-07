@@ -134,7 +134,7 @@ namespace jkj {
 
 
 		////////////////////////////////////////////////////////////////////////////////////////
-		// Fast and accurate log floor/ceil calculation
+		// Fast and accurate log floor calculation
 		////////////////////////////////////////////////////////////////////////////////////////
 
 		// The result of this function is accurate for
@@ -243,6 +243,8 @@ namespace jkj {
 			// during the decreasing search, it would get multiplied by 10^(initial_kappa-min_kappa-1)
 			static_assert(floor_log2_pow10(initial_kappa - min_kappa - 1) <
 				32 - int(extended_precision - precision - 1) - gamma);
+			// Ensure 10^initial_kappa fits inside 32 bits
+			static_assert(initial_kappa < floor_log10_pow2(32));
 
 			static constexpr int min_k = -floor_log10_pow2(max_exponent + 1 - alpha);
 			static constexpr int max_k = -floor_log10_pow2(min_exponent + 1 - alpha);
@@ -275,8 +277,7 @@ namespace jkj {
 
 			// Ensure that fractional parts cannot vanish when exponent is the minimum
 			static_assert(min_exponent < integer_check_exponent_lower_bound_for_q_mp_m3);
-
-
+			
 			static constexpr int zero_fractional_part_min_exponent_normal =
 				floor_log5_pow2(-(int(extended_precision - precision) - 2 + alpha)) -
 				(int(extended_precision - precision) - 2);
@@ -294,7 +295,7 @@ namespace jkj {
 
 		////////////////////////////////////////////////////////////////////////////////////////
 		// Computed cache entries
-		// !! You SHOULD regenerated the cache if you modify alpha and gamma !!
+		// !! You SHOULD regenerate the cache if you modify alpha and gamma !!
 		////////////////////////////////////////////////////////////////////////////////////////
 
 		template <class Float>
@@ -1012,6 +1013,7 @@ namespace jkj {
 			return cache_holder<Float>::cache[std::size_t(k - common_info<Float>::min_k)];
 		}
 
+		// Forward declaration of the main class
 		template <class Float>
 		class grisu_exact_impl;
 	}
@@ -1188,7 +1190,7 @@ namespace jkj {
 			}
 		};
 
-		// Perform correct rounding search; tie to up
+		// Perform correct rounding search; tie-to-up
 		struct tie_to_up {
 			static constexpr tag_t tag = tie_to_up_tag;
 			template <bool return_sign, class Float, class IntervalTypeProvider>
@@ -1203,7 +1205,7 @@ namespace jkj {
 			}
 		};
 
-		// Perform correct rounding search; tie to down
+		// Perform correct rounding search; tie-to-down
 		struct tie_to_down {
 			static constexpr tag_t tag = tie_to_down_tag;
 			template <bool return_sign, class Float, class IntervalTypeProvider>
@@ -1671,6 +1673,10 @@ namespace jkj {
 			static fp_t<Float, return_sign> compute(
 				grisu_exact_args<Float, IntervalTypeProvider, CorrectRoundingSearch> args)
 			{
+				//////////////////////////////////////////////////////////////////////
+				// Step 1: integer promotion & Grisu multiplier calculation
+				//////////////////////////////////////////////////////////////////////
+
 				fp_t<Float, return_sign> ret_value;
 
 				auto interval_type = IntervalTypeProvider{}(args.br);
@@ -1748,6 +1754,11 @@ namespace jkj {
 					false, cache, minus_beta + 1);
 				auto approx_y = zi - epsiloni;
 
+
+				//////////////////////////////////////////////////////////////////////
+				// Step 2: Search for kappa
+				//////////////////////////////////////////////////////////////////////
+
 				// Comparison of fractional parts is delayed
 				auto zf_vs_deltaf = zf_vs_deltaf_t::not_compared_yet;
 
@@ -1790,8 +1801,8 @@ namespace jkj {
 
 				// Decrease kappa by 1
 				ret_value.significand *= 10;
-				ret_value.significand += r / power_of_10<initial_kappa - 1>;
-				r %= power_of_10<initial_kappa - 1>;
+				ret_value.significand += std::uint32_t(r) / std::uint32_t(power_of_10<initial_kappa - 1>);
+				r = std::uint32_t(r) % std::uint32_t(power_of_10<initial_kappa - 1>);
 				--ret_value.exponent;
 
 				divisor = power_of_10<initial_kappa - 1>;
@@ -1824,6 +1835,11 @@ namespace jkj {
 					increasing_search<1, IntervalTypeProvider::tag>(ret_value, interval_type, zf_vs_deltaf,
 						exponent, minus_k, minus_beta, significand, r, divisor, deltai, cache);
 				}
+
+
+				//////////////////////////////////////////////////////////////////////
+				// Step 3: Dealing with the right endpoint (search for kappa')
+				//////////////////////////////////////////////////////////////////////
 
 			boundary_adjustment_and_return_label:
 				// If right endpoint is not included, we should check if z mod 10^kappa = 0
@@ -1878,7 +1894,11 @@ namespace jkj {
 					}
 				}
 
-				// Correct rounding search
+				
+				//////////////////////////////////////////////////////////////////////
+				// Step 4: Correct rounding search
+				//////////////////////////////////////////////////////////////////////
+
 				if constexpr (CorrectRoundingSearch::tag !=
 					grisu_exact_correct_rounding::do_not_care_tag &&
 					IntervalTypeProvider::tag ==
@@ -2454,8 +2474,9 @@ namespace jkj {
 				std::uint32_t& epsiloni,
 				cache_entry_type const& cache)
 			{
-				auto quotient = r / power_of_10<initial_kappa - lambda>;
-				auto new_r = r % power_of_10<initial_kappa - lambda>;
+				// We already know r < 10^initial_kappa < 2^32
+				auto quotient = std::uint32_t(r) / std::uint32_t(power_of_10<initial_kappa - lambda>);
+				auto new_r = std::uint32_t(r) % std::uint32_t(power_of_10<initial_kappa - lambda>);
 
 				// Check if the remainder is still greater than or equal to the delta
 				// remainder should be strictly greater if the left boundary is contained
