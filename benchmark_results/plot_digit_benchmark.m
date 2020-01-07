@@ -1,5 +1,7 @@
 function [] = plot_digit_benchmark( filename )
 
+output_filename = replace(filename, '.csv', '.pdf');
+
 samples_per_digits = csvread(filename,0,1,[0 1 0 1]);
 table = readtable(filename);
 max_digits = table{size(table,1),2};
@@ -30,8 +32,8 @@ end
 addpath(genpath('shaded_plots'));
 
 % plot
-figure('Color','w');
-fig_handles = zeros(3,1);
+fig = figure('Color','w');
+fig_handles = zeros(number_of_algorithms,1);
 hold on
 for algorithm_idx=1:number_of_algorithms
     fig_handles(algorithm_idx) = plot(1:max_digits,squeeze(avg(algorithm_idx,:)), ...
@@ -49,6 +51,9 @@ ylabel('Time (ns)');
 h = gca;
 h.XTick = 1:max_digits;
 set(gca,'TickLabelInterpreter', 'latex');
+set(gcf, 'Position', [100 100 1200 500]);
+orient(fig,'landscape');
+print(fig, output_filename,'-dpdf');
 hold off
 
 end

@@ -1,5 +1,7 @@
 function [] = plot_uniform_benchmark( filename, bits )
 
+output_filename = replace(filename, '.csv', '.pdf');
+
 samples = csvread(filename,0,1,[0 1 0 1]);
 table = readtable(filename);
 number_of_algorithms = size(table,1) / samples;
@@ -43,8 +45,8 @@ else
 end
 
 % plot
-figure('Color','w');
-fig_handles = zeros(3,1);
+fig = figure('Color','w');
+fig_handles = zeros(number_of_algorithms,1);
 hold on
 sz = ones(plot_size, 1) * 0.4;
 for algorithm_idx=1:number_of_algorithms
@@ -65,6 +67,9 @@ elseif bits==64
     xticklabels({'$0$','$2^{62}$','$2^{63}$','$3\times2^{62}$','$2^{64}$'});
 end
 set(gca,'TickLabelInterpreter', 'latex');
+set(gcf, 'Position', [100 100 1200 500]);
+orient(fig,'landscape');
+print(fig, output_filename,'-dpdf');
 hold off
 
 end
