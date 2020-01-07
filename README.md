@@ -20,7 +20,7 @@ There are three files you might want to include: ````grisu_exact.h````, ````fp_t
 # Performance
 In my machine, it defeats or is on par with other contemporary algorithms including Ryu. Especially, Grisu-Exact is much faster than Ryu if the output string contains small number of digits. It is slightly slower than Ryu when the output string contains the maximum possible number of digits.
 
-![corei7_7700hq@2.80_win64_vc2019_randomdigit_time](benchmark.png)
+![corei7_7700hq@2.80_win64_vc2019_randomdigit_time](other_files/benchmark.png)
 
 # Comprehensive Explanation of the Algorithm
 Please see [this file](https://github.com/jk-jeon/Grisu-Exact/blob/master/other_files/Grisu-Exact.pdf).
