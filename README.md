@@ -1,5 +1,5 @@
 # Grisu-Exact
-A variant of Grisu algorithm producing the shortest and correctly rounded output always, inspired by Ryu algorithm
+Grisu-Exact is a variant of [Grisu](https://www.cs.tufts.edu/~nr/cs257/archive/florian-loitsch/printf.pdf). Unlike Grisu, Grisu-Exact always produces shortest and correctly rounded outputs. Development of this algorithm is inspired by [Ryu](https://www.researchgate.net/publication/329410883_Ryu_fast_float-to-string_conversion).
 
 This library is a reference implementation of Grisu-Exact in C++.
 
