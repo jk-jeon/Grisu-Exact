@@ -75,7 +75,7 @@ The following benchmark result is obtained using Milo's dtoa benchmark framework
 
 ![corei7_7700hq@2.80_win64_vc2019_randomdigit_time](other_files/milo_benchmark.png)
 
-There is also another benchmark done by myself:
+There is also a benchmark done by myself:
 ![digits_benchmark_binary32](benchmark_results/digits_benchmark_binary32.png)
 ![digits_benchmark_binary64](benchmark_results/digits_benchmark_binary64.png)
 (top: benchmark for ````float```` data, bottom: benchmark for ````double```` data)
@@ -84,8 +84,10 @@ Here is another performance plot with uniformly randomly generated ````float````
 ![uniform_benchmark_binary32](benchmark_results/uniform_benchmark_binary32.png)
 ![uniform_benchmark_binary64](benchmark_results/uniform_benchmark_binary64.png)
 
+Information about these benchmarks can be found in Section 5 of [this paper](https://github.com/jk-jeon/Grisu-Exact/blob/master/other_files/Grisu-Exact.pdf).
+
 # Comprehensive Explanation of the Algorithm
-Please see [this file](https://github.com/jk-jeon/Grisu-Exact/blob/master/other_files/Grisu-Exact.pdf).
+Please see [this paper](https://github.com/jk-jeon/Grisu-Exact/blob/master/other_files/Grisu-Exact.pdf).
 
 # How to Run Tests
 In order to run tests and benchmarks, you need `.cpp/.h` files in the directory [`tests`](tests) and [`benchmarks`](benchmarks), in addition to [`grisu_exact.h`](grisu_exact.h), [`fp_to_chars.h`](fp_to_chars.h), and [`fp_to_chars.cpp`](fp_to_chars/fp_to_chars.cpp).
