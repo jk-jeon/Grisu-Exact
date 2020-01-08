@@ -18,48 +18,44 @@ namespace jkj {
 		RoundingMode&& rounding_mode = {},
 		CorrectRoundingSearch&& crs = {})
 	{
-		// Define case handler
-		auto case_handler = [](auto&& dispatcher, char* buffer) {
-			auto const& br = static_cast<jkj::bit_representation_t<Float> const&>(dispatcher);
-			if (br.is_finite()) {
+		auto br = get_bit_representation(x);
+		if (br.is_finite()) {
+			if (br.is_negative()) {
+				*buffer = '-';
+				++buffer;
+			}
+			if ((br.f << 1) != 0) {
+				if constexpr (sizeof(Float) == 4) {
+					return fp_to_chars_detail::float_to_chars(grisu_exact<false>(x,
+						std::forward<RoundingMode>(rounding_mode),
+						std::forward<CorrectRoundingSearch>(crs)), buffer);
+				}
+				else {
+					return fp_to_chars_detail::double_to_chars(grisu_exact<false>(x,
+						std::forward<RoundingMode>(rounding_mode),
+						std::forward<CorrectRoundingSearch>(crs)), buffer);
+				}
+			}
+			else {
+				std::memcpy(buffer, "0E0", 3);
+				return buffer + 3;
+			}
+		}
+		else {
+			if ((br.f << (grisu_exact_detail::common_info<Float>::exponent_bits + 1)) != 0)
+			{
+				std::memcpy(buffer, "NaN", 3);
+				return buffer + 3;
+			}
+			else {
 				if (br.is_negative()) {
 					*buffer = '-';
 					++buffer;
 				}
-				if ((br.f << 1) != 0) {
-					if constexpr (sizeof(Float) == 4) {
-						return fp_to_chars_detail::float_to_chars(dispatcher(), buffer);
-					}
-					else {
-						return fp_to_chars_detail::double_to_chars(dispatcher(), buffer);
-					}
-				}
-				else {
-					std::memcpy(buffer, "0E0", 3);
-					return buffer + 3;
-				}
+				std::memcpy(buffer, "Infinity", 8);
+				return buffer + 8;
 			}
-			else{
-				if ((br.f << (grisu_exact_detail::common_info<Float>::exponent_bits + 1)) != 0)
-				{
-					std::memcpy(buffer, "NaN", 3);
-					return buffer + 3;
-				}
-				else {
-					if (br.is_negative()) {
-						*buffer = '-';
-						++buffer;
-					}
-					std::memcpy(buffer, "Infinity", 8);
-					return buffer + 8;
-				}
-			}
-		};
-
-		return grisu_exact<false>(x, case_handler,
-			std::forward<RoundingMode>(rounding_mode),
-			std::forward<CorrectRoundingSearch>(crs),
-			buffer);
+		}
 	}
 
 	// Null-terminate and bypass the return value of fp_to_chars_n

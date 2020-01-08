@@ -1155,6 +1155,13 @@ namespace jkj {
 		}
 	};
 
+	template <class Float>
+	bit_representation_t<Float> get_bit_representation(Float x) noexcept {
+		bit_representation_t<Float> br;
+		std::memcpy(&br.f, &x, sizeof(Float));
+		return br;
+	}
+
 	namespace grisu_exact_detail {
 		// In order to reduce the argument passing overhead,
 		// this class should be as simple as possible.
@@ -1182,11 +1189,8 @@ namespace jkj {
 			fp_t<Float, return_sign> delegate(bit_representation_t<Float> br,
 				IntervalTypeProvider&&) const
 			{
-				using arg_type = grisu_exact_detail::grisu_exact_args<Float,
-					std::remove_cvref_t<IntervalTypeProvider>, do_not_care>;
-
-				return grisu_exact_detail::grisu_exact_impl<Float>::template compute<return_sign>(
-					arg_type{ br });
+				return grisu_exact_detail::grisu_exact_impl<Float>::template compute<
+					return_sign, std::remove_cvref_t<IntervalTypeProvider>, do_not_care>(br);
 			}
 		};
 
@@ -1197,11 +1201,8 @@ namespace jkj {
 			fp_t<Float, return_sign> delegate(bit_representation_t<Float> br,
 				IntervalTypeProvider&&) const
 			{
-				using arg_type = grisu_exact_detail::grisu_exact_args<Float,
-					std::remove_cvref_t<IntervalTypeProvider>, tie_to_up>;
-
-				return grisu_exact_detail::grisu_exact_impl<Float>::template compute<return_sign>(
-					arg_type{ br });
+				return grisu_exact_detail::grisu_exact_impl<Float>::template compute<
+					return_sign, std::remove_cvref_t<IntervalTypeProvider>, tie_to_up>(br);
 			}
 		};
 
@@ -1212,11 +1213,8 @@ namespace jkj {
 			fp_t<Float, return_sign> delegate(bit_representation_t<Float> br,
 				IntervalTypeProvider&&) const
 			{
-				using arg_type = grisu_exact_detail::grisu_exact_args<Float,
-					std::remove_cvref_t<IntervalTypeProvider>, tie_to_down>;
-
-				return grisu_exact_detail::grisu_exact_impl<Float>::template compute<return_sign>(
-					arg_type{ br });
+				return grisu_exact_detail::grisu_exact_impl<Float>::template compute<
+					return_sign, std::remove_cvref_t<IntervalTypeProvider>, tie_to_down>(br);
 			}
 		};
 	}
@@ -1670,8 +1668,7 @@ namespace jkj {
 			//// The main algorithm assumes the input is a normal/subnormal finite number
 
 			template <bool return_sign, class IntervalTypeProvider, class CorrectRoundingSearch>
-			static fp_t<Float, return_sign> compute(
-				grisu_exact_args<Float, IntervalTypeProvider, CorrectRoundingSearch> args)
+			static fp_t<Float, return_sign> compute(bit_representation_t<Float> br)
 			{
 				//////////////////////////////////////////////////////////////////////
 				// Step 1: integer promotion & Grisu multiplier calculation
@@ -1679,14 +1676,14 @@ namespace jkj {
 
 				fp_t<Float, return_sign> ret_value;
 
-				auto interval_type = IntervalTypeProvider{}(args.br);
+				auto interval_type = IntervalTypeProvider{}(br);
 
 				if constexpr (return_sign) {
-					ret_value.is_negative = args.br.is_negative();
+					ret_value.is_negative = br.is_negative();
 				}
-				auto significand = args.br.f << exponent_bits;
+				auto significand = br.f << exponent_bits;
 
-				auto exponent = int((args.br.f << 1) >> (precision + 1));
+				auto exponent = int((br.f << 1) >> (precision + 1));
 				// Deal with normal/subnormal dichotomy
 				if (exponent != 0) {
 					significand |= sign_bit_mask;
@@ -2509,99 +2506,41 @@ namespace jkj {
 				return false;
 			}
 		};
-
-		// Run the actual algorithm depending on the given rounding mode and correct rounding guarantee
-		template <bool return_sign, class Float, class RoundingMode, class CorrectRoundingSearch>
-		struct dispatcher :
-			public bit_representation_t<Float>,
-			private RoundingMode,
-			private CorrectRoundingSearch
-		{
-			using float_type = Float;
-
-			template <class RoundingModeParam, class CorrectRoundingSearchParam>
-			dispatcher(bit_representation_t<Float> br,
-				RoundingModeParam&& rounding_mode, CorrectRoundingSearchParam&& crs) :
-				bit_representation_t<Float>(br),
-				RoundingMode(std::forward<RoundingModeParam>(rounding_mode)),
-				CorrectRoundingSearch(std::forward<CorrectRoundingSearchParam>(crs)) {}
-
-			bit_representation_t<Float> const& bit_representation() const noexcept {
-				return static_cast<bit_representation_t<Float> const&>(*this);
-			}
-
-			fp_t<Float, return_sign> operator()() & {
-				return static_cast<RoundingMode&>(*this).template delegate<return_sign>(
-					bit_representation(), static_cast<CorrectRoundingSearch&>(*this));
-			}
-			fp_t<Float, return_sign> operator()() const& {
-				return static_cast<RoundingMode const&>(*this).template delegate<return_sign>(
-					bit_representation(), static_cast<CorrectRoundingSearch const&>(*this));
-			}
-			fp_t<Float, return_sign> operator()() && {
-				return static_cast<RoundingMode&&>(*this).template delegate<return_sign>(
-					bit_representation(), static_cast<CorrectRoundingSearch&&>(*this));
-			}
-			fp_t<Float, return_sign> operator()() const&& {
-				return static_cast<RoundingMode const&&>(*this).template delegate<return_sign>(
-					bit_representation(), static_cast<CorrectRoundingSearch const&&>(*this));
-			}
-		};
 	}
 
-	// Determines the control flow of the algorithm depending on the type of the input
-	// Thr set of these policies is intended to be extensible.
+	// What to do with non-finite inputs?
 	namespace grisu_exact_case_handlers {
-		// Convenient helper function to get bit representation from dispatcher
-		template <bool return_sign, class Float, class RoundingMode, class CorrectRoundingSearch>
-		auto get_bit_representation(grisu_exact_detail::dispatcher<
-			return_sign, Float, RoundingMode, CorrectRoundingSearch> const& dispatcher) noexcept
-			-> bit_representation_t<Float> const&
-		{
-			return dispatcher.bit_representation();
-		}
-
 		struct assert_finite {
-			template <class Dispatcher>
-			auto operator()(Dispatcher&& dispatcher) const
+			template <class Float>
+			void operator()(bit_representation_t<Float> br) const
 			{
-				assert(get_bit_representation(dispatcher).is_finite());
-				return dispatcher();
+				assert(br.is_finite());
 			}
 		};
 
 		// This policy is mainly for debugging purpose
 		struct ignore_special_cases {
-			template <class Dispatcher>
-			auto operator()(Dispatcher&& dispatcher) const
+			template <class Float>
+			void operator()(bit_representation_t<Float> br) const
 			{
-				return dispatcher();
 			}
 		};
 	}
 
 	template <bool return_sign = true, class Float,
-		class CaseHandler = grisu_exact_case_handlers::assert_finite,
 		class RoundingMode = grisu_exact_rounding_modes::nearest_to_even,
 		class CorrectRoundingSearch = grisu_exact_correct_rounding::tie_to_up,
-		class... AdditionalArgs
+		class CaseHandler = grisu_exact_case_handlers::assert_finite
 	>
-	auto grisu_exact(Float x,
-		CaseHandler&& case_handler = {},
+	fp_t<Float, return_sign> grisu_exact(Float x,
 		RoundingMode&& rounding_mode = {},
 		CorrectRoundingSearch&& crs = {},
-		AdditionalArgs&&... args) ->
-		decltype(case_handler(std::declval<grisu_exact_detail::dispatcher<return_sign, Float,
-			std::remove_cvref_t<RoundingMode>, std::remove_cvref_t<CorrectRoundingSearch>>>(),
-			std::forward<AdditionalArgs>(args)...))
+		CaseHandler&& case_handler = {})		
 	{
-		bit_representation_t<Float> br;
-		std::memcpy(&br.f, &x, sizeof(Float));
-
-		return case_handler(grisu_exact_detail::dispatcher<return_sign, Float,
-			std::remove_cvref_t<RoundingMode>, std::remove_cvref_t<CorrectRoundingSearch>>{
-			br, std::forward<RoundingMode>(rounding_mode), std::forward<CorrectRoundingSearch>(crs)
-		}, std::forward<AdditionalArgs>(args)...);
+		auto br = get_bit_representation(x);
+		case_handler(br);
+		return std::forward<RoundingMode>(rounding_mode).template delegate<return_sign>(
+			br, std::forward<CorrectRoundingSearch>(crs));
 	}
 }
 
