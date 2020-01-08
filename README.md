@@ -59,7 +59,8 @@ end_ptr = jkj::fp_to_chars_n(x, buffer);
 #include "grisu_exact.h"
 double x = 1.234;   // Also works for float
 
-// v is a struct with three members:
+// Here, x should be a nonzero finite number!
+// The return value v is a struct with three members:
 // significand : decimal significand (1234 in this case);
 //               it is of type std::uint64_t for double, std::uint32_t for float
 //    exponent : decimal exponent (-3 in this case); it is of type int
