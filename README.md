@@ -102,4 +102,7 @@ There are also some MATLAB scripts in the directory [`benchmark_results`](benchm
 This library is not yet production-ready. Use it with your own risk.
 
 # License
-MIT
+Licensed under either of
+
+ * Apache License Version 2.0 with LLVM Exceptions ([LICENSE-APACHE](LICENSE-APACHE) or https://llvm.org/foundation/relicensing/LICENSE.txt)
+ * MIT license ([LICENSE-MIT](LICENSE-MIT)
