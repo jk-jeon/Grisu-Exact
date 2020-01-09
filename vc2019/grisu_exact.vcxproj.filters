@@ -16,12 +16,6 @@
     <Filter Include="fp_to_chars">
       <UniqueIdentifier>{f57bdbcf-7d31-4616-b494-31103da25c7f}</UniqueIdentifier>
     </Filter>
-    <Filter Include="benchmark\milo">
-      <UniqueIdentifier>{097cf5e6-a53d-44af-ad25-6b211855eb5e}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="benchmark\floaxie">
-      <UniqueIdentifier>{6ec2cb51-2c9f-4afd-92a6-475408afd692}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\tests\bigint.h">
@@ -64,78 +58,6 @@
     <ClInclude Include="..\fp_to_chars.h" />
     <ClInclude Include="..\benchmark\benchmark.h">
       <Filter>benchmark</Filter>
-    </ClInclude>
-    <ClInclude Include="..\benchmark\milo\dtoa_milo.h">
-      <Filter>benchmark\milo</Filter>
-    </ClInclude>
-    <ClInclude Include="..\benchmark\msinttypes\inttypes.h">
-      <Filter>benchmark\milo</Filter>
-    </ClInclude>
-    <ClInclude Include="..\benchmark\msinttypes\stdint.h">
-      <Filter>benchmark\milo</Filter>
-    </ClInclude>
-    <ClInclude Include="..\benchmark\floaxie\atof.h">
-      <Filter>benchmark\floaxie</Filter>
-    </ClInclude>
-    <ClInclude Include="..\benchmark\floaxie\bit_ops.h">
-      <Filter>benchmark\floaxie</Filter>
-    </ClInclude>
-    <ClInclude Include="..\benchmark\floaxie\cached_power.h">
-      <Filter>benchmark\floaxie</Filter>
-    </ClInclude>
-    <ClInclude Include="..\benchmark\floaxie\conversion_status.h">
-      <Filter>benchmark\floaxie</Filter>
-    </ClInclude>
-    <ClInclude Include="..\benchmark\floaxie\default_fallback.h">
-      <Filter>benchmark\floaxie</Filter>
-    </ClInclude>
-    <ClInclude Include="..\benchmark\floaxie\diy_fp.h">
-      <Filter>benchmark\floaxie</Filter>
-    </ClInclude>
-    <ClInclude Include="..\benchmark\floaxie\fraction.h">
-      <Filter>benchmark\floaxie</Filter>
-    </ClInclude>
-    <ClInclude Include="..\benchmark\floaxie\ftoa.h">
-      <Filter>benchmark\floaxie</Filter>
-    </ClInclude>
-    <ClInclude Include="..\benchmark\floaxie\grisu.h">
-      <Filter>benchmark\floaxie</Filter>
-    </ClInclude>
-    <ClInclude Include="..\benchmark\floaxie\huge_val.h">
-      <Filter>benchmark\floaxie</Filter>
-    </ClInclude>
-    <ClInclude Include="..\benchmark\floaxie\integer_of_size.h">
-      <Filter>benchmark\floaxie</Filter>
-    </ClInclude>
-    <ClInclude Include="..\benchmark\floaxie\k_comp.h">
-      <Filter>benchmark\floaxie</Filter>
-    </ClInclude>
-    <ClInclude Include="..\benchmark\floaxie\krosh.h">
-      <Filter>benchmark\floaxie</Filter>
-    </ClInclude>
-    <ClInclude Include="..\benchmark\floaxie\memwrap.h">
-      <Filter>benchmark\floaxie</Filter>
-    </ClInclude>
-    <ClInclude Include="..\benchmark\floaxie\powers_ten.h">
-      <Filter>benchmark\floaxie</Filter>
-    </ClInclude>
-    <ClInclude Include="..\benchmark\floaxie\powers_ten_double.h">
-      <Filter>benchmark\floaxie</Filter>
-    </ClInclude>
-    <ClInclude Include="..\benchmark\floaxie\powers_ten_single.h">
-      <Filter>benchmark\floaxie</Filter>
-    </ClInclude>
-    <ClInclude Include="..\benchmark\floaxie\prettify.h">
-      <Filter>benchmark\floaxie</Filter>
-    </ClInclude>
-    <ClInclude Include="..\benchmark\floaxie\print.h">
-      <Filter>benchmark\floaxie</Filter>
-    </ClInclude>
-    <ClInclude Include="..\benchmark\floaxie\static_pow.h">
-      <Filter>benchmark\floaxie</Filter>
-    </ClInclude>
-    <ClInclude Include="..\benchmark\floaxie\type_punning_cast.h">
-      <Filter>benchmark\floaxie</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -188,11 +110,5 @@
       <Filter>benchmark</Filter>
     </ClCompile>
     <ClCompile Include="..\tests\main.cpp" />
-    <ClCompile Include="..\benchmark\floaxie.cpp">
-      <Filter>benchmark</Filter>
-    </ClCompile>
-    <ClCompile Include="..\benchmark\milo.cpp">
-      <Filter>benchmark</Filter>
-    </ClCompile>
   </ItemGroup>
 </Project>

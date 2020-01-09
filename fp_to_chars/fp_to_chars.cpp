@@ -1,10 +1,48 @@
-#include "../fp_to_chars.h"
+// The contents of this file is based on contents of:
+//
+// https://github.com/ulfjack/ryu/blob/master/ryu/common.h,
+// https://github.com/ulfjack/ryu/blob/master/ryu/d2s.c, and
+// https://github.com/ulfjack/ryu/blob/master/ryu/f2s.c,
+//
+// which are distributed under the following terms:
+//--------------------------------------------------------------------------------
+// Copyright 2018 Ulf Adams
+//
+// The contents of this file may be used under the terms of the Apache License,
+// Version 2.0.
+//
+//    (See accompanying file LICENSE-Apache or copy at
+//     http://www.apache.org/licenses/LICENSE-2.0)
+//
+// Alternatively, the contents of this file may be used under the terms of
+// the Boost Software License, Version 1.0.
+//    (See accompanying file LICENSE-Boost or copy at
+//     https://www.boost.org/LICENSE_1_0.txt)
+//
+// Unless required by applicable law or agreed to in writing, this software
+// is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.
+//--------------------------------------------------------------------------------
+// Modifications Copyright 2020 Junekey Jeon
+//
+// Following modifications were made to the original contents:
+//  - Put everything inside the namespace jkj::fp_to_chars_detail
+//  - Combined decimalLength9 (from common.h) and decimalLength17 (from d2s.c)
+//    into a single template function decimal_length
+//  - Combined to_chars (from f2s.c) and to_chars (from d2s.c) into a
+//    single template function fp_to_chars_impl
+//  - Removed index counting statements; replaced them with pointer increments
+//  - Removed usages of DIGIT_TABLE; replaced them with radix_100_table
+//
+//  These modifications, together with other contents of this file may be used
+//  under the same terms as the original contents.
 
-// Copied (and modified a little bit) from Ryu
+
+#include "../fp_to_chars.h"
 
 namespace jkj {
 	namespace fp_to_chars_detail {
-		alignas(std::uint32_t) static constexpr char radix_100_table[] = {
+		static constexpr char radix_100_table[] = {
 			'0', '0', '0', '1', '0', '2', '0', '3', '0', '4',
 			'0', '5', '0', '6', '0', '7', '0', '8', '0', '9',
 			'1', '0', '1', '1', '1', '2', '1', '3', '1', '4',
@@ -31,6 +69,8 @@ namespace jkj {
 		static constexpr std::uint32_t decimal_length(UInt const v) {
 			if constexpr (std::is_same_v<UInt, std::uint32_t>) {
 				// Function precondition: v is not a 10-digit number.
+				// (f2s: 9 digits are sufficient for round-tripping.)
+				// (d2fixed: We print 9-digit blocks.)
 				assert(v < 1000000000);
 				if (v >= 100000000) { return 9; }
 				if (v >= 10000000) { return 8; }

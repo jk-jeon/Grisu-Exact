@@ -20,30 +20,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\benchmark\benchmark.h" />
-    <ClInclude Include="..\benchmark\floaxie\atof.h" />
-    <ClInclude Include="..\benchmark\floaxie\bit_ops.h" />
-    <ClInclude Include="..\benchmark\floaxie\cached_power.h" />
-    <ClInclude Include="..\benchmark\floaxie\conversion_status.h" />
-    <ClInclude Include="..\benchmark\floaxie\default_fallback.h" />
-    <ClInclude Include="..\benchmark\floaxie\diy_fp.h" />
-    <ClInclude Include="..\benchmark\floaxie\fraction.h" />
-    <ClInclude Include="..\benchmark\floaxie\ftoa.h" />
-    <ClInclude Include="..\benchmark\floaxie\grisu.h" />
-    <ClInclude Include="..\benchmark\floaxie\huge_val.h" />
-    <ClInclude Include="..\benchmark\floaxie\integer_of_size.h" />
-    <ClInclude Include="..\benchmark\floaxie\krosh.h" />
-    <ClInclude Include="..\benchmark\floaxie\k_comp.h" />
-    <ClInclude Include="..\benchmark\floaxie\memwrap.h" />
-    <ClInclude Include="..\benchmark\floaxie\powers_ten.h" />
-    <ClInclude Include="..\benchmark\floaxie\powers_ten_double.h" />
-    <ClInclude Include="..\benchmark\floaxie\powers_ten_single.h" />
-    <ClInclude Include="..\benchmark\floaxie\prettify.h" />
-    <ClInclude Include="..\benchmark\floaxie\print.h" />
-    <ClInclude Include="..\benchmark\floaxie\static_pow.h" />
-    <ClInclude Include="..\benchmark\floaxie\type_punning_cast.h" />
-    <ClInclude Include="..\benchmark\milo\dtoa_milo.h" />
-    <ClInclude Include="..\benchmark\msinttypes\inttypes.h" />
-    <ClInclude Include="..\benchmark\msinttypes\stdint.h" />
     <ClInclude Include="..\benchmark\ryu\common.h" />
     <ClInclude Include="..\benchmark\ryu\d2fixed_full_table.h" />
     <ClInclude Include="..\benchmark\ryu\d2s.h" />
@@ -61,10 +37,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\benchmark\benchmark.cpp" />
-    <ClCompile Include="..\benchmark\floaxie.cpp" />
     <ClCompile Include="..\benchmark\grisu_exact.cpp" />
     <ClCompile Include="..\benchmark\grisu_exact_wo_correct_rounding.cpp" />
-    <ClCompile Include="..\benchmark\milo.cpp" />
     <ClCompile Include="..\benchmark\ryu.cpp" />
     <ClCompile Include="..\benchmark\ryu\d2fixed.c" />
     <ClCompile Include="..\benchmark\ryu\d2s.c" />

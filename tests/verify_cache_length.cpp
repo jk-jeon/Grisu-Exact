@@ -1,7 +1,31 @@
-////////////////////////////////////////////////////////////////////////////////////////
-// This file is a direct translation of the included MATLAB files
-// minmax_euclide_v2.m and verify_cache_length_32/64_positive/negative_k.m
-////////////////////////////////////////////////////////////////////////////////////////
+// Copyright 2020 Junekey Jeon
+//
+// The contents of this file may be used under the terms of
+// the Apache License v2.0 with LLVM Exceptions.
+//
+//    (See accompanying file LICENSE-Apache or copy at
+//     https://llvm.org/foundation/relicensing/LICENSE.txt)
+//
+// Alternatively, the contents of this file may be used under the terms of
+// the MIT License:
+//
+//  Permission is hereby granted, free of charge, to any person obtaining a copy
+//  of this softwareand associated documentation files(the "Software"), to deal
+//  in the Software without restriction, including without limitation the rights
+//  to use, copy, modify, merge, publish, distribute, sublicense, and /or sell
+//  copies of the Software, and to permit persons to whom the Software is
+//  furnished to do so, subject to the following conditions :
+//  
+//  The above copyright noticeand this permission notice shall be included in all
+//  copies or substantial portions of the Software.
+//  
+//  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+//  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+//  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE
+//  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+//  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+//  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+//  SOFTWARE.
 
 #include "bigint.h"
 #include <algorithm>
