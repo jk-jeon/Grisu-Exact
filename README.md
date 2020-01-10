@@ -104,12 +104,12 @@ This library is not yet production-ready. Use it with your own risk.
 # License
 All code, except for those belong to third-party libraries (code in [`benchmark/ryu`](benchmark/ryu) and [`benchmark_results/shaded_plots`](benchmark_results/shaded_plots)), is licensed under either of
 
- * Apache License Version 2.0 with LLVM Exceptions ([LICENSE-Apache-LLVM](LICENSE-Apache2-LLVM) or https://llvm.org/foundation/relicensing/LICENSE.txt) or
+ * Apache License Version 2.0 with LLVM Exceptions ([LICENSE-Apache2-LLVM](LICENSE-Apache2-LLVM) or https://llvm.org/foundation/relicensing/LICENSE.txt) or
  * MIT license ([LICENSE-MIT](LICENSE-MIT)),
 
 except for the file [`fp_to_chars.cpp`](fp_to_chars/fp_to_chars.cpp), which is licensed under either of
 
- * Apache License Version 2.0 ([LICENSE-Apache](fp_to_chars/LICENSE-Apache) or http://www.apache.org/licenses/LICENSE-2.0) or
+ * Apache License Version 2.0 ([LICENSE-Apache2](fp_to_chars/LICENSE-Apache2) or http://www.apache.org/licenses/LICENSE-2.0) or
  * Boost Software License Version 1.0 ([LICENSE-Boost](fp_to_chars/LICENSE-Boost)).
  
  
