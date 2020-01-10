@@ -102,7 +102,14 @@ There are also some MATLAB scripts in the directory [`benchmark_results`](benchm
 This library is not yet production-ready. Use it with your own risk.
 
 # License
-Licensed under either of
+All code, except for those belong to third-party libraries (code in [`benchmark/ryu`](benchmark/ryu) and [`benchmark_results/shaded_plots`](benchmark_results/shaded_plots)), is licensed under either of
 
- * Apache License Version 2.0 with LLVM Exceptions ([LICENSE-APACHE](LICENSE-APACHE) or https://llvm.org/foundation/relicensing/LICENSE.txt)
- * MIT license ([LICENSE-MIT](LICENSE-MIT))
+ * Apache License Version 2.0 with LLVM Exceptions ([LICENSE-Apache-LLVM](LICENSE-Apache2-LLVM) or https://llvm.org/foundation/relicensing/LICENSE.txt) or
+ * MIT license ([LICENSE-MIT](LICENSE-MIT)),
+
+except for the file [`fp_to_chars.cpp`](fp_to_chars/fp_to_chars.cpp), which is licensed under either of
+
+ * Apache License Version 2.0 ([LICENSE-Apache](fp_to_chars/LICENSE-Apache) or http://www.apache.org/licenses/LICENSE-2.0) or
+ * Boost Software License Version 1.0 ([LICENSE-Boost](fp_to_chars/LICENSE-Boost)).
+ 
+ 
