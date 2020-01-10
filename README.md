@@ -90,19 +90,26 @@ Information about these benchmarks can be found in Section 5 of [this paper](htt
 Please see [this paper](https://github.com/jk-jeon/Grisu-Exact/blob/master/other_files/Grisu-Exact.pdf).
 
 # How to Run Tests
-In order to run tests and benchmarks, you need `.cpp/.h` files in the directory [`tests`](tests) and [`benchmarks`](benchmarks), in addition to [`grisu_exact.h`](grisu_exact.h), [`fp_to_chars.h`](fp_to_chars.h), and [`fp_to_chars.cpp`](fp_to_chars/fp_to_chars.cpp).
+In order to run tests and benchmarks, you need `.cpp/.h` files in the directories [`tests`](tests) and [`benchmarks`](benchmarks), in addition to [`grisu_exact.h`](grisu_exact.h), [`fp_to_chars.h`](fp_to_chars.h), and [`fp_to_chars.cpp`](fp_to_chars/fp_to_chars.cpp).
 
 In [`main.cpp`](main.cpp) (which is in [`tests`](tests) directory), there are bunch of `#define`'s. Uncomment whatever you want to test or benchmark, compile and link every `.cpp` files mentioned.
 
-The result of tests and benchmarks will be written in the directory [`test_results`](test_results) and [`becnhmark_results`](benchmark_results) respectively, and as `std::ofstream` cannot create a new directory, those directories should exist before running the test.
+The result of tests and benchmarks will be written in the directories [`test_results`](test_results) and [`becnhmark_results`](benchmark_results) respectively, and as `std::ofstream` cannot create a new directory, those directories should exist before running the test.
 
-There are also some MATLAB scripts in the directory [`benchmark_results`](benchmark_results) for plot generation. Include them also if you have MATLAB on your machine and want to generate plots.
+There are also some MATLAB scripts in the directory [`benchmark_results`](benchmark_results) for plot generation. If you have MATLAB installed on your machine and want to generate plots, then download these script files also.
 
 # Notes
 This library is not yet production-ready. Use it with your own risk.
 
 # License
-Licensed under either of
+All code, except for those belong to third-party libraries (code in [`benchmark/ryu`](benchmark/ryu) and [`benchmark_results/shaded_plots`](benchmark_results/shaded_plots)), is licensed under either of
 
- * Apache License Version 2.0 with LLVM Exceptions ([LICENSE-APACHE](LICENSE-APACHE) or https://llvm.org/foundation/relicensing/LICENSE.txt)
- * MIT license ([LICENSE-MIT](LICENSE-MIT))
+ * Apache License Version 2.0 with LLVM Exceptions ([LICENSE-Apache-LLVM](LICENSE-Apache2-LLVM) or https://llvm.org/foundation/relicensing/LICENSE.txt) or
+ * MIT license ([LICENSE-MIT](LICENSE-MIT)),
+
+except for the file [`fp_to_chars.cpp`](fp_to_chars/fp_to_chars.cpp), which is licensed under either of
+
+ * Apache License Version 2.0 ([LICENSE-Apache](fp_to_chars/LICENSE-Apache) or http://www.apache.org/licenses/LICENSE-2.0) or
+ * Boost Software License Version 1.0 ([LICENSE-Boost](fp_to_chars/LICENSE-Boost)).
+ 
+ 
