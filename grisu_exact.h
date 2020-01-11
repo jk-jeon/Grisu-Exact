@@ -1179,18 +1179,6 @@ namespace jkj {
 		return br;
 	}
 
-	namespace grisu_exact_detail {
-		// In order to reduce the argument passing overhead,
-		// this class should be as simple as possible.
-		// (e.g., no inheritance, no private non-static data member, etc.;
-		// this is an unfortunate fact about x64 calling convention.)
-		template <class Float, class IntervalTypeProvider, class CorrectRoundingSearch>
-		struct grisu_exact_args
-		{
-			bit_representation_t<Float> br;
-		};
-	}
-
 	// Determine what to do about the correct rounding guarantee
 	namespace grisu_exact_correct_rounding {
 		enum tag_t {
