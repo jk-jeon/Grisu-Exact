@@ -29,7 +29,7 @@ namespace jkj {
 	// Returns the next-to-end position
 	template <class Float,
 		class RoundingMode = grisu_exact_rounding_modes::nearest_to_even,
-		class CorrectRoundingSearch = grisu_exact_correct_rounding::tie_to_up
+		class CorrectRoundingSearch = grisu_exact_correct_rounding::tie_to_even
 	>
 	char* fp_to_chars_n(Float x, char* buffer,
 		RoundingMode&& rounding_mode = {},
@@ -78,7 +78,7 @@ namespace jkj {
 	// Null-terminate and bypass the return value of fp_to_chars_n
 	template <class Float,
 		class RoundingMode = grisu_exact_rounding_modes::nearest_to_even,
-		class CorrectRoundingSearch = grisu_exact_correct_rounding::tie_to_up
+		class CorrectRoundingSearch = grisu_exact_correct_rounding::tie_to_even
 	>
 	char* fp_to_chars(Float x, char* buffer,
 		RoundingMode&& rounding_mode = {},

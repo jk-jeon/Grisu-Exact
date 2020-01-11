@@ -1195,6 +1195,8 @@ namespace jkj {
 	namespace grisu_exact_correct_rounding {
 		enum tag_t {
 			do_not_care_tag,
+			tie_to_even_tag,
+			tie_to_odd_tag,
 			tie_to_up_tag,
 			tie_to_down_tag
 		};
@@ -1208,6 +1210,30 @@ namespace jkj {
 			{
 				return grisu_exact_detail::grisu_exact_impl<Float>::template compute<
 					return_sign, std::remove_cvref_t<IntervalTypeProvider>, do_not_care>(br);
+			}
+		};
+
+		// Perform correct rounding search; tie-to-even
+		struct tie_to_even {
+			static constexpr tag_t tag = tie_to_even_tag;
+			template <bool return_sign, class Float, class IntervalTypeProvider>
+			fp_t<Float, return_sign> delegate(bit_representation_t<Float> br,
+				IntervalTypeProvider&&) const
+			{
+				return grisu_exact_detail::grisu_exact_impl<Float>::template compute<
+					return_sign, std::remove_cvref_t<IntervalTypeProvider>, tie_to_even>(br);
+			}
+		};
+
+		// Perform correct rounding search; tie-to-odd
+		struct tie_to_odd {
+			static constexpr tag_t tag = tie_to_even_tag;
+			template <bool return_sign, class Float, class IntervalTypeProvider>
+			fp_t<Float, return_sign> delegate(bit_representation_t<Float> br,
+				IntervalTypeProvider&&) const
+			{
+				return grisu_exact_detail::grisu_exact_impl<Float>::template compute<
+					return_sign, std::remove_cvref_t<IntervalTypeProvider>, tie_to_odd>(br);
 			}
 		};
 
@@ -1954,8 +1980,40 @@ namespace jkj {
 							auto two_yi = compute_mul(significand, cache, minus_beta - 1);
 
 							if constexpr (CorrectRoundingSearch::tag ==
-								grisu_exact_correct_rounding::tie_to_down_tag)
+								grisu_exact_correct_rounding::tie_to_even_tag ||
+								CorrectRoundingSearch::tag ==
+								grisu_exact_correct_rounding::tie_to_odd_tag)
 							{
+								// Compare round-up vs round-down
+								// round-up  : (two_yi + 1) / 2
+								// round-down: (two_yi + 1) / 2 if !is_prodict_integer, two_yi / 2 otherwise
+								// If they can differ, that is, if is_product_integer,
+								// then prefer even/odd
+								if (is_product_integer<integer_check_case_id::two_times_fc>(
+									significand, exponent, minus_k))
+								{
+									if constexpr (CorrectRoundingSearch::tag ==
+										grisu_exact_correct_rounding::tie_to_even_tag)
+									{
+										ret_value.significand = (two_yi / 2) % 2 == 1 ?
+											(two_yi + 1) / 2 : two_yi / 2;
+									}
+									else
+									{
+										ret_value.significand = (two_yi / 2) % 2 == 0 ?
+											(two_yi + 1) / 2 : two_yi / 2;
+									}
+								}
+								else {
+									ret_value.significand = (two_yi + 1) / 2;
+								}
+							}
+							else if constexpr (CorrectRoundingSearch::tag ==
+								grisu_exact_correct_rounding::tie_to_up_tag)
+							{
+								ret_value.significand = (two_yi + 1) / 2;
+							}
+							else {
 								if (!is_product_integer<integer_check_case_id::two_times_fc>(
 									significand, exponent, minus_k))
 								{
@@ -1963,9 +2021,6 @@ namespace jkj {
 								}
 
 								ret_value.significand = two_yi / 2;
-							}
-							else {
-								ret_value.significand = (two_yi + 1) / 2;
 							}
 
 							return ret_value;
@@ -2058,7 +2113,34 @@ namespace jkj {
 								--steps;
 							else if (yi == approx_y) {
 								if constexpr (CorrectRoundingSearch::tag ==
-									grisu_exact_correct_rounding::tag_t::tie_to_up_tag)
+									grisu_exact_correct_rounding::tie_to_even_tag ||
+									CorrectRoundingSearch::tag ==
+									grisu_exact_correct_rounding::tie_to_odd_tag)
+								{
+									// Compare round-up vs round-down
+									// round-up  : steps - 1
+									// round-down: steps - 1 if !is_product_integer, steps otherwise
+									// If they differ, that is, if is_product_integer,
+									// then prefer even/odd
+									if (is_product_integer<integer_check_case_id::other>(significand, exponent, minus_k))
+									{
+										// steps vs steps - 1
+										if constexpr (CorrectRoundingSearch::tag ==
+											grisu_exact_correct_rounding::tie_to_even_tag)
+										{
+											steps = (ret_value.significand - steps) % 2 == 1 ? steps - 1 : steps;
+										}
+										else
+										{
+											steps = (ret_value.significand - steps) % 2 == 0 ? steps - 1 : steps;
+										}
+									}
+									else {
+										--steps;
+									}
+								}
+								else if constexpr (CorrectRoundingSearch::tag ==
+									grisu_exact_correct_rounding::tie_to_up_tag)
 								{
 									--steps;
 								}
@@ -2546,13 +2628,13 @@ namespace jkj {
 
 	template <bool return_sign = true, class Float,
 		class RoundingMode = grisu_exact_rounding_modes::nearest_to_even,
-		class CorrectRoundingSearch = grisu_exact_correct_rounding::tie_to_up,
+		class CorrectRoundingSearch = grisu_exact_correct_rounding::tie_to_even,
 		class CaseHandler = grisu_exact_case_handlers::assert_finite
 	>
 	fp_t<Float, return_sign> grisu_exact(Float x,
 		RoundingMode&& rounding_mode = {},
 		CorrectRoundingSearch&& crs = {},
-		CaseHandler&& case_handler = {})		
+		CaseHandler&& case_handler = {})
 	{
 		auto br = get_bit_representation(x);
 		case_handler(br);
