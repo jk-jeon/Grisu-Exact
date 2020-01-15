@@ -3,6 +3,7 @@ This library is a reference implementation of Grisu-Exact in C++.
 
 Grisu-Exact is a variant of [Grisu](https://www.cs.tufts.edu/~nr/cs257/archive/florian-loitsch/printf.pdf). Unlike Grisu, Grisu-Exact always produces shortest and correctly rounded outputs. Development of this algorithm was inspired by [Ryu](https://www.researchgate.net/publication/329410883_Ryu_fast_float-to-string_conversion).
 
+(Note that Grisu is indeed already a "correct" algorithm in the sense that it does provide roundtrip guarantee. But Grisu-Exact provides more than that; see below.)
 
 # Introduction
 Grisu-Exact generates a pair of integers from a floating-point number: the decimal significand and the decimal exponent of the input floating-point number. These integers can then be used for string generation of decimal representation of the input floating-point number, the procedure commonly called ````ftoa```` or ````dtoa````.
