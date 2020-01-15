@@ -15,8 +15,8 @@
 // is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
 // KIND, either express or implied.
 
-#ifndef __JKJ_FP_TO_CHARS__
-#define __JKJ_FP_TO_CHARS__
+#ifndef JKJ_FP_TO_CHARS
+#define JKJ_FP_TO_CHARS
 
 #include "grisu_exact.h"
 

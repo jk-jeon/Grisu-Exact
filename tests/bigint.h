@@ -15,8 +15,8 @@
 // is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
 // KIND, either express or implied.
 
-#ifndef __JKJ_GRISU_EXACT_BIGINT__
-#define __JKJ_GRISU_EXACT_BIGINT__
+#ifndef JKJ_GRISU_EXACT_BIGINT
+#define JKJ_GRISU_EXACT_BIGINT
 
 ////////////////////////////////////////////////////////////////////////////////////////
 // This file is only used for cache generation, and need not be included for real use

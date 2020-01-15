@@ -15,8 +15,8 @@
 // is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
 // KIND, either express or implied.
 
-#ifndef __JKJ_GRISU_RANDOM_FLOAT__
-#define __JKJ_GRISU_RANDOM_FLOAT__
+#ifndef JKJ_GRISU_RANDOM_FLOAT
+#define JKJ_GRISU_RANDOM_FLOAT
 
 #include "../grisu_exact.h"
 #include <cstring>

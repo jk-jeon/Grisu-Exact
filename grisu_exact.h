@@ -15,8 +15,8 @@
 // is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
 // KIND, either express or implied.
 
-#ifndef __JKJ_GRISU_EXACT__
-#define __JKJ_GRISU_EXACT__
+#ifndef JKJ_GRISU_EXACT
+#define JKJ_GRISU_EXACT
 
 //#include <bit>		// We don't have C++20 <bit> yet
 #include <bitset>		// Payload of NaN's is of type std::bitset
