@@ -23,8 +23,8 @@
 #include <iomanip>
 #include <string_view>
 
-template <class Float, class TypenameString>
-void uniform_random_perf_test(std::size_t number_of_tests, TypenameString&& type_name_string)
+template <class Float>
+void uniform_random_perf_test(std::size_t number_of_tests)
 {
 	using extended_significand_type =
 		typename jkj::grisu_exact_detail::common_info<Float>::extended_significand_type;
@@ -39,11 +39,11 @@ void uniform_random_perf_test(std::size_t number_of_tests, TypenameString&& type
 
 void uniform_random_perf_test_float(std::size_t number_of_tests) {
 	std::cout << "[Running the algorithm with uniformly randomly generated float inputs...]\n";
-	uniform_random_perf_test<float>(number_of_tests, "float");
+	uniform_random_perf_test<float>(number_of_tests);
 	std::cout << "Done.\n\n\n";
 }
 void uniform_random_perf_test_double(std::size_t number_of_tests) {
 	std::cout << "[Running the algorithm with uniformly randomly generated double inputs...]\n";
-	uniform_random_perf_test<double>(number_of_tests, "double");
+	uniform_random_perf_test<double>(number_of_tests);
 	std::cout << "Done.\n\n\n";
 }

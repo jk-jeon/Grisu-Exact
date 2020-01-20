@@ -63,7 +63,6 @@ public:
 	{
 		assert(number_of_iterations >= 1);
 		char buffer[40];
-		char throwaway = '\0';
 
 		for (auto const& name_func_pair : name_func_pairs_) {
 			auto [result_array_itr, is_inserted] = out.insert_or_assign(
