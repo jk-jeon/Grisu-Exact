@@ -1353,7 +1353,7 @@ namespace jkj {
 			}
 			template <class Float>
 			interval_type::asymmetric_boundary operator()(bit_representation_t<Float> br) const noexcept {
-				return{ br.is_negative() };
+				return{ !br.is_negative() };
 			}
 		};
 		struct nearest_toward_minus_infinity {
@@ -1368,9 +1368,10 @@ namespace jkj {
 			}
 			template <class Float>
 			interval_type::asymmetric_boundary operator()(bit_representation_t<Float> br) const noexcept {
-				return{ !br.is_negative() };
+				return{ br.is_negative() };
 			}
 		};
+		// This may generate the fastest code among nearest rounding modes
 		struct nearest_toward_zero {
 			static constexpr tag_t tag = to_nearest_tag;
 
@@ -1382,11 +1383,10 @@ namespace jkj {
 					br, *this);
 			}
 			template <class Float>
-			interval_type::left_closed_right_open operator()(bit_representation_t<Float> br) const noexcept {
+			interval_type::right_closed_left_open operator()(bit_representation_t<Float>) const noexcept {
 				return{};
 			}
 		};
-		// This may generate the fastest code among nearest rounding modes
 		struct nearest_away_from_zero {
 			static constexpr tag_t tag = to_nearest_tag;
 
@@ -1398,7 +1398,7 @@ namespace jkj {
 					br, *this);
 			}
 			template <class Float>
-			interval_type::right_closed_left_open operator()(bit_representation_t<Float> br) const noexcept {
+			interval_type::left_closed_right_open operator()(bit_representation_t<Float>) const noexcept {
 				return{};
 			}
 		};
@@ -1408,7 +1408,7 @@ namespace jkj {
 				static constexpr tag_t tag = to_nearest_tag;
 
 				template <class Float>
-				interval_type::closed operator()(bit_representation_t<Float> br) const noexcept {
+				interval_type::closed operator()(bit_representation_t<Float>) const noexcept {
 					return{};
 				}
 			};
@@ -1416,7 +1416,7 @@ namespace jkj {
 				static constexpr tag_t tag = to_nearest_tag;
 
 				template <class Float>
-				interval_type::open operator()(bit_representation_t<Float> br) const noexcept {
+				interval_type::open operator()(bit_representation_t<Float>) const noexcept {
 					return{};
 				}
 			};
@@ -1496,7 +1496,7 @@ namespace jkj {
 				static constexpr tag_t tag = left_closed_directed_tag;
 
 				template <class Float>
-				interval_type::left_closed_right_open operator()(bit_representation_t<Float> br) const noexcept {
+				interval_type::left_closed_right_open operator()(bit_representation_t<Float>) const noexcept {
 					return{};
 				}
 			};
@@ -1504,7 +1504,7 @@ namespace jkj {
 				static constexpr tag_t tag = right_closed_directed_tag;
 
 				template <class Float>
-				interval_type::right_closed_left_open operator()(bit_representation_t<Float> br) const noexcept {
+				interval_type::right_closed_left_open operator()(bit_representation_t<Float>) const noexcept {
 					return{};
 				}
 			};
@@ -1517,12 +1517,12 @@ namespace jkj {
 			{
 				if (br.is_negative()) {
 					return std::forward<CorrectRoundingSearch>(crs).template delegate<return_sign>(
-						br, detail::left_closed_directed{});
+						br, detail::right_closed_directed{});
 					
 				}
 				else {
 					return std::forward<CorrectRoundingSearch>(crs).template delegate<return_sign>(
-						br, detail::right_closed_directed{});
+						br, detail::left_closed_directed{});
 				}
 			}
 		};
@@ -1533,11 +1533,11 @@ namespace jkj {
 			{
 				if (br.is_negative()) {
 					return std::forward<CorrectRoundingSearch>(crs).template delegate<return_sign>(
-						br, detail::right_closed_directed{});
+						br, detail::left_closed_directed{});
 				}
 				else {
 					return std::forward<CorrectRoundingSearch>(crs).template delegate<return_sign>(
-						br, detail::left_closed_directed{});
+						br, detail::right_closed_directed{});
 				}
 			}
 		};
@@ -1547,7 +1547,7 @@ namespace jkj {
 				CorrectRoundingSearch&& crs) const
 			{
 				return std::forward<CorrectRoundingSearch>(crs).template delegate<return_sign>(
-					br, detail::left_closed_directed{});
+					br, detail::right_closed_directed{});
 			}
 		};
 		struct away_from_zero {
@@ -1556,7 +1556,7 @@ namespace jkj {
 				CorrectRoundingSearch&& crs) const
 			{
 				return std::forward<CorrectRoundingSearch>(crs).template delegate<return_sign>(
-					br, detail::right_closed_directed{});
+					br, detail::left_closed_directed{});
 			}
 		};
 	}
@@ -1579,7 +1579,7 @@ namespace jkj {
 			using common_info<Float>::cache_precision;
 
 			static extended_significand_type compute_mul(
-				extended_significand_type f, cache_entry_type const& cache, int minus_beta)
+				extended_significand_type f, cache_entry_type const& cache, int minus_beta) noexcept
 			{
 				if constexpr (sizeof(Float) == 4) {
 					return umul96_upper32(f, cache) >> minus_beta;
@@ -1590,8 +1590,8 @@ namespace jkj {
 			}
 
 			template <grisu_exact_rounding_modes::tag_t tag>
-			static std::uint32_t compute_delta(bool is_edge_case,
-				cache_entry_type const& cache, int minus_beta)
+			static std::uint32_t compute_delta([[maybe_unused]] bool is_edge_case,
+				cache_entry_type const& cache, int minus_beta) noexcept
 			{
 				static constexpr auto q_mp_m1 = extended_precision - precision - 1;
 				static constexpr auto intermediate_precision =
@@ -1671,7 +1671,7 @@ namespace jkj {
 			using common_info<Float>::integer_check_exponent_upper_bound_for_p_p1;
 
 			static constexpr extended_significand_type compute_power(
-				extended_significand_type b, unsigned int e)
+				extended_significand_type b, unsigned int e) noexcept
 			{
 				extended_significand_type r = 1;
 				for (unsigned int i = 0; i < e; ++i)
@@ -1689,7 +1689,7 @@ namespace jkj {
 
 			template <grisu_exact_rounding_modes::tag_t tag>
 			static std::uint32_t compute_delta(bool is_edge_case,
-				cache_entry_type const& cache, int minus_beta)
+				cache_entry_type const& cache, int minus_beta) noexcept
 			{
 				return compute_mul_helper<Float>::template compute_delta<tag>(
 					is_edge_case, cache, minus_beta);
@@ -1780,7 +1780,7 @@ namespace jkj {
 				// These are needed for correct rounding search
 				auto epsiloni = compute_delta<grisu_exact_rounding_modes::left_closed_directed_tag>(
 					false, cache, minus_beta + 1);
-				auto approx_y = zi - epsiloni;
+				[[maybe_unused]] auto approx_y = zi - epsiloni;
 
 
 				//////////////////////////////////////////////////////////////////////
@@ -2161,6 +2161,11 @@ namespace jkj {
 									{
 										steps = 0;
 									}
+									break;
+
+								case zf_vs_deltaf_t::zf_smaller:
+									// Do nothing; just to silence the warning
+									break;
 								}
 							}
 						}
@@ -2175,7 +2180,7 @@ namespace jkj {
 		private:
 			static bool is_zf_strictly_smaller_than_deltaf(
 				extended_significand_type fl,
-				int minus_beta, cache_entry_type const& cache)
+				int minus_beta, cache_entry_type const& cache) noexcept
 			{
 				auto mul = compute_mul(fl, cache, minus_beta);
 				return (mul & 1) != 0;
@@ -2189,7 +2194,8 @@ namespace jkj {
 				other
 			};
 			template <integer_check_case_id case_id>
-			static bool is_product_integer(extended_significand_type f, int exponent, int minus_k)
+			static bool is_product_integer([[maybe_unused]] extended_significand_type f,
+				int exponent, [[maybe_unused]] int minus_k) noexcept
 			{
 				// Case I: f = fc - 2^(q-p-3), Fw = 1 and Ew != Emin
 				if constexpr (case_id == integer_check_case_id::fc_minus_2_to_the_q_mp_m3_edge) {
@@ -2308,7 +2314,7 @@ namespace jkj {
 
 						assert(exp_2 >= 1);
 						// Perhaps better to utilize TZCNT?
-						if (exp_2 >= extended_precision)
+						if (exp_2 >= int(extended_precision))
 							return false;
 						return f == ((f >> exp_2) << exp_2);
 					}
@@ -2399,7 +2405,8 @@ namespace jkj {
 			};
 
 			template <grisu_exact_rounding_modes::tag_t tag>
-			static bool equal_fractional_parts(extended_significand_type fl, int exponent, int minus_k)
+			static bool equal_fractional_parts([[maybe_unused]] extended_significand_type fl,
+				[[maybe_unused]] int exponent, [[maybe_unused]] int minus_k) noexcept
 			{
 				if constexpr (tag == grisu_exact_rounding_modes::to_nearest_tag)
 				{
@@ -2432,7 +2439,7 @@ namespace jkj {
 
 			template <grisu_exact_rounding_modes::tag_t tag, class IntervalType>
 			static bool is_zf_smaller_than_deltaf(extended_significand_type fc, int minus_beta,
-				cache_entry_type const& cache, IntervalType& interval_type, int exponent, int minus_k)
+				cache_entry_type const& cache, IntervalType& interval_type, int exponent, int minus_k) noexcept
 			{
 				// Compute fl
 				extended_significand_type fl;
@@ -2460,7 +2467,7 @@ namespace jkj {
 			}				
 
 			template <grisu_exact_rounding_modes::tag_t tag>
-			static bool is_delta_integer(bool is_edge_case, int exponent)
+			static bool is_delta_integer([[maybe_unused]] bool is_edge_case, int exponent) noexcept
 			{
 				// For nearest rounding
 				if constexpr (tag == grisu_exact_rounding_modes::to_nearest_tag)
@@ -2508,7 +2515,7 @@ namespace jkj {
 				extended_significand_type& r,
 				extended_significand_type& divisor,
 				std::uint32_t deltai,
-				cache_entry_type const& cache)
+				cache_entry_type const& cache) noexcept
 			{
 				auto quotient = ret_value.significand / power_of_10<lambda>;
 				auto new_r = r + divisor * (ret_value.significand % power_of_10<lambda>);
@@ -2530,6 +2537,11 @@ namespace jkj {
 							return false;
 						}
 						zf_vs_deltaf = zf_vs_deltaf_t::zf_smaller;
+						break;
+
+					case zf_vs_deltaf_t::zf_smaller:
+						// Do nothing; just to silence the warning
+						break;
 					}
 				}
 
@@ -2556,7 +2568,7 @@ namespace jkj {
 				extended_significand_type& r,
 				std::uint32_t& deltai,
 				std::uint32_t& epsiloni,
-				cache_entry_type const& cache)
+				cache_entry_type const& cache) noexcept
 			{
 				// We already know r < 10^initial_kappa < 2^32
 				auto quotient = std::uint32_t(r) / std::uint32_t(power_of_10<initial_kappa - lambda>);
@@ -2580,6 +2592,11 @@ namespace jkj {
 							return true;
 						}
 						zf_vs_deltaf = zf_vs_deltaf_t::zf_larger;
+						break;
+
+					case zf_vs_deltaf_t::zf_larger:
+						// Do nothing; just to silence the warning
+						break;
 					}
 				}
 
@@ -2599,7 +2616,7 @@ namespace jkj {
 	namespace grisu_exact_case_handlers {
 		struct assert_finite {
 			template <class Float>
-			void operator()(bit_representation_t<Float> br) const
+			void operator()([[maybe_unused]] bit_representation_t<Float> br) const
 			{
 				assert(br.is_finite());
 			}
@@ -2608,7 +2625,7 @@ namespace jkj {
 		// This policy is mainly for debugging purpose
 		struct ignore_special_cases {
 			template <class Float>
-			void operator()(bit_representation_t<Float> br) const
+			void operator()(bit_representation_t<Float>) const
 			{
 			}
 		};
