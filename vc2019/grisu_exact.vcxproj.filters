@@ -28,9 +28,6 @@
     <ClInclude Include="..\benchmark\ryu\common.h">
       <Filter>benchmark\ryu</Filter>
     </ClInclude>
-    <ClInclude Include="..\benchmark\ryu\d2fixed_full_table.h">
-      <Filter>benchmark\ryu</Filter>
-    </ClInclude>
     <ClInclude Include="..\benchmark\ryu\d2s.h">
       <Filter>benchmark\ryu</Filter>
     </ClInclude>
@@ -40,9 +37,6 @@
     <ClInclude Include="..\benchmark\ryu\d2s_intrinsics.h">
       <Filter>benchmark\ryu</Filter>
     </ClInclude>
-    <ClInclude Include="..\benchmark\ryu\d2s_small_table.h">
-      <Filter>benchmark\ryu</Filter>
-    </ClInclude>
     <ClInclude Include="..\benchmark\ryu\digit_table.h">
       <Filter>benchmark\ryu</Filter>
     </ClInclude>
@@ -50,9 +44,6 @@
       <Filter>benchmark\ryu</Filter>
     </ClInclude>
     <ClInclude Include="..\benchmark\ryu\ryu.h">
-      <Filter>benchmark\ryu</Filter>
-    </ClInclude>
-    <ClInclude Include="..\benchmark\ryu\ryu2.h">
       <Filter>benchmark\ryu</Filter>
     </ClInclude>
     <ClInclude Include="..\fp_to_chars.h" />
@@ -81,9 +72,6 @@
     </ClCompile>
     <ClCompile Include="..\tests\verify_log_computation.cpp">
       <Filter>tests</Filter>
-    </ClCompile>
-    <ClCompile Include="..\benchmark\ryu\d2fixed.c">
-      <Filter>benchmark\ryu</Filter>
     </ClCompile>
     <ClCompile Include="..\benchmark\ryu\d2s.c">
       <Filter>benchmark\ryu</Filter>

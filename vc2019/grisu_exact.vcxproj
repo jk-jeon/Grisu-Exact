@@ -21,15 +21,12 @@
   <ItemGroup>
     <ClInclude Include="..\benchmark\benchmark.h" />
     <ClInclude Include="..\benchmark\ryu\common.h" />
-    <ClInclude Include="..\benchmark\ryu\d2fixed_full_table.h" />
     <ClInclude Include="..\benchmark\ryu\d2s.h" />
     <ClInclude Include="..\benchmark\ryu\d2s_full_table.h" />
     <ClInclude Include="..\benchmark\ryu\d2s_intrinsics.h" />
-    <ClInclude Include="..\benchmark\ryu\d2s_small_table.h" />
     <ClInclude Include="..\benchmark\ryu\digit_table.h" />
     <ClInclude Include="..\benchmark\ryu\f2s_full_table.h" />
     <ClInclude Include="..\benchmark\ryu\ryu.h" />
-    <ClInclude Include="..\benchmark\ryu\ryu2.h" />
     <ClInclude Include="..\fp_to_chars.h" />
     <ClInclude Include="..\grisu_exact.h" />
     <ClInclude Include="..\tests\bigint.h" />
@@ -40,7 +37,6 @@
     <ClCompile Include="..\benchmark\grisu_exact.cpp" />
     <ClCompile Include="..\benchmark\grisu_exact_wo_correct_rounding.cpp" />
     <ClCompile Include="..\benchmark\ryu.cpp" />
-    <ClCompile Include="..\benchmark\ryu\d2fixed.c" />
     <ClCompile Include="..\benchmark\ryu\d2s.c" />
     <ClCompile Include="..\benchmark\ryu\f2s.c" />
     <ClCompile Include="..\fp_to_chars\fp_to_chars.cpp" />
@@ -140,6 +136,7 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <FloatingPointModel>Precise</FloatingPointModel>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\benchmark</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -176,6 +173,7 @@
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <FloatingPointModel>Precise</FloatingPointModel>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\benchmark</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
