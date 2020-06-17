@@ -30,6 +30,15 @@
 #if defined(_MSC_VER)
 #include <intrin.h>
 #include <immintrin.h>
+
+// Suppress additional buffer overrun check
+// I have no idea why MSVC thinks some functions here are vulnerable to the buffer overrun attacks
+// No, they aren't.
+#ifndef __clang__
+#define JKJ_GRISU_EXACT_SAFEBUFFERS __declspec(safebuffers)
+#endif
+#else
+#define JKJ_GRISU_EXACT_SAFEBUFFERS
 #endif
 
 namespace jkj {
@@ -72,6 +81,7 @@ namespace jkj {
 #endif
 		};
 
+		JKJ_GRISU_EXACT_SAFEBUFFERS
 		inline uint128 umul128(std::uint64_t x, std::uint64_t y) noexcept {
 #if defined(_MSC_VER) && defined(_M_X64)
 			uint128 result;
@@ -99,6 +109,7 @@ namespace jkj {
 #endif
 		}
 
+		JKJ_GRISU_EXACT_SAFEBUFFERS
 		inline std::uint64_t umul128_upper64(std::uint64_t x, std::uint64_t y) noexcept {
 #if defined(_MSC_VER) && defined(_M_X64)
 			return __umulh(x, y);
@@ -125,6 +136,7 @@ namespace jkj {
 		}
 
 		// Get upper 64-bits of multiplication of a 64-bit unsigned integer and a 128-bit unsigned integer
+		JKJ_GRISU_EXACT_SAFEBUFFERS
 		inline std::uint64_t umul192_upper64(std::uint64_t x, uint128 y) noexcept {
 			auto g0 = umul128(x, y.high());
 			auto g10 = umul128_upper64(x, y.low());
@@ -154,30 +166,28 @@ namespace jkj {
 		// Fast and accurate log floor calculation
 		////////////////////////////////////////////////////////////////////////////////////////
 
-		// The result of this function is accurate for
-		// exp in [-65536,+65536], but may not be valid outside.
+		// This function is accurate if e is in the range [-1650,1650]
 		constexpr int floor_log10_pow2(int e) noexcept {
-			// The next 32 digits are 0x7de7fbcc
-			constexpr std::uint32_t log10_2_up_to_32 = 0x4d104d42;
+			// The next 12 digits are 0xd27
+			constexpr std::int32_t log10_2_up_to_20 = 0x4d104;
 
 			return int(
-				// Calculate 0x0.4d104d42 * exp * 2^32
-				(std::int64_t(e) * log10_2_up_to_32)
+				// Calculate 0x0.4d104 * exp * 2^20
+				(std::int32_t(e) * log10_2_up_to_20)
 				// Perform arithmetic-shift
-				>> 32);
+				>> 20);
 		}
 
-		// The result of this function is accurate for
-		// exp in [-65536,+65536], but may not be valid outside.
+		// This function is accurate if e is in the range [-4003,4003]
 		constexpr int floor_log2_pow10(int e) noexcept {
-			// The next 32 digits are 0x346e2bf9
-			constexpr std::uint32_t log2_5_over_4_up_to_32 = 0x5269e12f;
+			// The next 12 digits are 0x12f
+			constexpr std::int32_t log2_5_over_4_up_to_20 = 0x5269e;
 
 			return 3 * e + int(
-				// Calculate 0x0.5269e12f * exp * 2^32
-				(std::int64_t(e) * log2_5_over_4_up_to_32)
+				// Calculate 0x0.5269e * exp * 2^20
+				(std::int32_t(e) * log2_5_over_4_up_to_20)
 				// Perform arithmetic-shift
-				>> 32);
+				>> 20);
 		}
 
 
@@ -205,7 +215,7 @@ namespace jkj {
 		struct common_info {
 			using float_type = Float;
 
-			static_assert(std::numeric_limits<Float>::is_iec559&&
+			static_assert(std::numeric_limits<Float>::is_iec559 &&
 				std::numeric_limits<Float>::radix == 2 &&
 				(sizeof(Float) == 4 || sizeof(Float) == 8),
 				"Grisu-Exact algorithm only applies to IEEE-754 binary32 and binary64 formats!");
@@ -1024,7 +1034,7 @@ namespace jkj {
 		};
 
 		template <class Float>
-		constexpr typename common_info<Float>::cache_entry_type const& get_cache(int k) {
+		constexpr typename common_info<Float>::cache_entry_type const& get_cache(int k) noexcept {
 			assert(k >= common_info<Float>::min_k &&
 				k <= common_info<Float>::max_k);
 			return cache_holder<Float>::cache[std::size_t(k - common_info<Float>::min_k)];
@@ -1118,7 +1128,7 @@ namespace jkj {
 
 		// Allows negative zero and negative NaN's, but not allow positive zero
 		bool is_negative() const noexcept {
-			return (f >> (extended_precision - 1)) != 0;//(f & sign_bit_mask) != 0;
+			return (f & sign_bit_mask) != 0;
 		}
 
 		// Allows positive zero and positive NaN's, but not allow negative zero
@@ -1699,7 +1709,8 @@ namespace jkj {
 			//// The main algorithm assumes the input is a normal/subnormal finite number
 
 			template <bool return_sign, class IntervalTypeProvider, class CorrectRoundingSearch>
-			static fp_t<Float, return_sign> compute(bit_representation_t<Float> br)
+			JKJ_GRISU_EXACT_SAFEBUFFERS
+			static fp_t<Float, return_sign> compute(bit_representation_t<Float> br) noexcept
 			{
 				//////////////////////////////////////////////////////////////////////
 				// Step 1: integer promotion & Grisu multiplier calculation
@@ -1714,7 +1725,7 @@ namespace jkj {
 				}
 				auto significand = br.f << exponent_bits;
 
-				auto exponent = int((br.f << 1) >> (precision + 1));
+				auto exponent = int((br.f & ~sign_bit_mask) >> precision);
 				// Deal with normal/subnormal dichotomy
 				if (exponent != 0) {
 					significand |= sign_bit_mask;
@@ -1749,8 +1760,7 @@ namespace jkj {
 				assert(-minus_beta >= alpha && -minus_beta <= gamma);
 
 				// Compute zi and deltai
-				using jkj::grisu_exact_detail::get_cache;
-				auto cache = get_cache<Float>(-minus_k);
+				auto cache = jkj::grisu_exact_detail::get_cache<Float>(-minus_k);
 
 				extended_significand_type zi;
 				if constexpr (IntervalTypeProvider::tag ==
@@ -1888,8 +1898,15 @@ namespace jkj {
 								if constexpr (IntervalTypeProvider::tag ==
 									grisu_exact_rounding_modes::to_nearest_tag)
 								{
+									// Strictly speaking, significand == sign_bit_mask
+									// is not the correct expression for checking the edge case.
+									// However, we don't need to additionally check
+									// exponent != min_exponent because if
+									// exponent == min_exponent, then the result is false
+									// regardless of the value of significand.
 									if (!interval_type.include_left_endpoint() &&
-										is_delta_integer<IntervalTypeProvider::tag>(significand == sign_bit_mask, exponent))
+										is_delta_integer<IntervalTypeProvider::tag>(
+											significand == sign_bit_mask, exponent))
 									{
 										ret_value.significand *= 10;
 										divisor /= 10;
@@ -1956,8 +1973,8 @@ namespace jkj {
 				{
 					// This procedure strictly depends on our specific choice of these parameters:
 					static_assert(
-						(sizeof(Float) == 4 && min_kappa == 0 && max_kappa == 9 && initial_kappa == 2) ||
-						(sizeof(Float) == 8 && min_kappa == 1 && max_kappa == 18 && initial_kappa == 3));
+						(sizeof(Float) == 4 && min_kappa == 0 && max_kappa == 9) ||
+						(sizeof(Float) == 8 && min_kappa == 1 && max_kappa == 18));
 
 					if constexpr (sizeof(Float) == 4) {
 						// Should treat the case kappa == 0 separately
@@ -2022,35 +2039,44 @@ namespace jkj {
 					// [binary64]
 					// 0: 51.9%   1: 31.9%   2: 10.2%   3:  4.5%   4:  1.4%
 					// 5:  0.1%   6:  0.0%   7:  0.0%   8:  0.0%   9:  0.0%
-					auto displacement = (divisor / 2) + r;
+					auto const displacement = (divisor / 2) + r;
+
 					// Is the quotient at least 1?
 					if (displacement <= epsiloni) {
 						std::uint8_t steps;
+						epsiloni -= std::uint32_t(displacement);
+
+						// At this point, we can be sure that divisor should be
+						// at most 1'000'000'000, because
+						// epsiloni < 4'294'967'296 < 5'000'000'000 = (10'000'000'000 / 2)
+						// and epsiloni >= divisor / 2.
+						// Hence, 2 * divisor can fit inside std::uint32_t.
+						auto const divisor32 = std::uint32_t(divisor);
 
 						// Is the quotient at least 2?
-						if (displacement + divisor <= epsiloni) {
-							displacement += divisor;
+						if (divisor32 <= epsiloni) {
+							epsiloni -= divisor32;
 
 							// Is the quotient at least 4?
-							if (displacement + 2 * divisor <= epsiloni) {
-								displacement += 2 * divisor;
+							if (2 * divisor32 <= epsiloni) {
+								epsiloni -= 2 * divisor32;
 
 								// Is the quotient at least 5?
-								if (displacement + divisor <= epsiloni) {
-									displacement += divisor;
+								if (divisor32 <= epsiloni) {
+									epsiloni -= divisor32;
 
 									// Is the quotient at least 7?
-									if (displacement + 2 * divisor <= epsiloni) {
-										displacement += 2 * divisor;
+									if (2 * divisor32 <= epsiloni) {
+										epsiloni -= 2 * divisor32;
 
 										// Is the quotient 9?
-										if (displacement + 2 * divisor <= epsiloni) {
-											displacement += 2 * divisor;
+										if (2 * divisor32 <= epsiloni) {
+											epsiloni -= 2 * divisor32;
 											steps = 9;
 										}
 										// Is the quotient 8?
-										else if (displacement + divisor <= epsiloni) {
-											displacement += divisor;
+										else if (divisor32 <= epsiloni) {
+											epsiloni -= divisor32;
 											steps = 8;
 										}
 										// Is the quotient 7?
@@ -2061,8 +2087,8 @@ namespace jkj {
 									// Is the quotient either 5 or 6?
 									else {
 										// Is the quotient 6?
-										if (displacement + divisor <= epsiloni) {
-											displacement += divisor;
+										if (divisor32 <= epsiloni) {
+											epsiloni -= divisor32;
 											steps = 6;
 										}
 										// Is the quotient 5?
@@ -2079,8 +2105,8 @@ namespace jkj {
 							// Is the quotient either 2 or 3?
 							else {
 								// Is the quotient 3?
-								if (displacement + divisor <= epsiloni) {
-									displacement += divisor;
+								if (divisor32 <= epsiloni) {
+									epsiloni -= divisor32;
 									steps = 3;
 								}
 								// Is the quotient 2?
@@ -2095,7 +2121,7 @@ namespace jkj {
 						}
 
 						// Check fractional if necessary
-						if (displacement == epsiloni) {
+						if (epsiloni == 0) {
 							auto yi = compute_mul(significand, cache, minus_beta);
 							if (yi > approx_y)
 								--steps;
@@ -2438,8 +2464,9 @@ namespace jkj {
 			}
 
 			template <grisu_exact_rounding_modes::tag_t tag, class IntervalType>
-			static bool is_zf_smaller_than_deltaf(extended_significand_type fc, int minus_beta,
-				cache_entry_type const& cache, IntervalType& interval_type, int exponent, int minus_k) noexcept
+			static bool is_zf_smaller_than_deltaf(extended_significand_type fc,
+				int minus_beta, cache_entry_type const& cache,
+				IntervalType& interval_type, int exponent, int minus_k) noexcept
 			{
 				// Compute fl
 				extended_significand_type fl;
@@ -2530,8 +2557,8 @@ namespace jkj {
 						return false;
 
 					case zf_vs_deltaf_t::not_compared_yet:
-						if (!is_zf_smaller_than_deltaf<tag>(fc, minus_beta, cache,
-							interval_type, exponent, minus_k))
+						if (!is_zf_smaller_than_deltaf<tag>(fc,
+							minus_beta, cache, interval_type, exponent, minus_k))
 						{
 							zf_vs_deltaf = zf_vs_deltaf_t::zf_larger;
 							return false;
@@ -2585,8 +2612,8 @@ namespace jkj {
 						return true;
 
 					case zf_vs_deltaf_t::not_compared_yet:
-						if (is_zf_smaller_than_deltaf<tag>(fc, minus_beta, cache,
-							interval_type, exponent, minus_k))
+						if (is_zf_smaller_than_deltaf<tag>(fc,
+							minus_beta, cache, interval_type, exponent, minus_k))
 						{
 							zf_vs_deltaf = zf_vs_deltaf_t::zf_smaller;
 							return true;
@@ -2648,4 +2675,5 @@ namespace jkj {
 	}
 }
 
+#undef JKJ_GRISU_EXACT_SAFEBUFFERS
 #endif
