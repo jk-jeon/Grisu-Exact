@@ -191,8 +191,7 @@ namespace jkj {
 		}
 
 
-		// The result of this function is accurate for
-		// exp in [-65536,+65536], but may not be valid outside.
+		// This function is accurate if e is in the range [-65536,+65536]
 		// This function is only executed at compile-time,
 		// and never executed at runtime.
 		constexpr int floor_log5_pow2(int e) noexcept {
