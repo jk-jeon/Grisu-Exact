@@ -75,3 +75,5 @@
 /benchmark_results/digits_benchmark_binary32.csv
 /vc2019/VTune Profiler Results/grisu_exact
 /old_files
+/vc2019/GPUCache
+/vc2019/debug.log
