@@ -69,8 +69,10 @@ double x = 1.234;   // Also works for float
 auto v = jkj::grisu_exact(x);
 ```
 
+By default, `jkj::grisu_exact` returns a struct with three members (`significand`, `exponent`, and `is_negative`). On the other hand, if you call `jkj::grisu_exact<false>` instead of `jkj::grisu_exact`, then it returns a struct with two members (`significand` and `exponent`). It seems that using this second version instead of the plain `jkj::grisu_exact` results in a faster string generation. For an example usage of this `jkj::grisu_exact<false>`, please refer to [`fp_to_chars.h`](fp_to_chars.h).
+
 # Performance
-In my machine, it defeats or is on par with other contemporary algorithms including Ryu. Especially, Grisu-Exact is much faster than Ryu if the output string contains small number of digits. It can perform slightly slower or faster depending on the situation than Ryu when the output string contains near the maximum possible number of digits.
+In my machine, it defeats or is on par with other contemporary algorithms including Ryu. Especially, Grisu-Exact is much faster than Ryu if the output string contains small number of digits. It can perform slightly slower or faster depending on the situation than Ryu when the output string contains near the maximum possible number of digits. For the case of binary64 format (aka `double`), it consistently outperforms Ryu for all numbers of digits in my machine, and for the case of binary32 format (aka `float`), it consistently performs worse than Ryu if the number of digits is more than 7 in my machine.
 
 The following benchmark result is obtained using Milo's dtoa benchmark framework ([https://github.com/miloyip/dtoa-benchmark](https://github.com/miloyip/dtoa-benchmark)). The complete source code for the benchmark below is available [here](https://github.com/jk-jeon/dtoa-benchmark).
 
