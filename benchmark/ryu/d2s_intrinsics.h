@@ -21,7 +21,7 @@
 #include <stdint.h>
 
 // Defines RYU_32_BIT_PLATFORM if applicable.
-#include "common.h"
+#include "ryu/common.h"
 
 // ABSL avoids uint128_t on Win32 even if __SIZEOF_INT128__ is defined.
 // Let's do the same for now.
@@ -43,6 +43,7 @@ static inline uint64_t umul128(const uint64_t a, const uint64_t b, uint64_t* con
   return _umul128(a, b, productHi);
 }
 
+// Returns the lower 64 bits of (hi*2^64 + lo) >> dist, with 0 < dist < 64.
 static inline uint64_t shiftright128(const uint64_t lo, const uint64_t hi, const uint32_t dist) {
   // For the __shiftright128 intrinsic, the shift value is always
   // modulo 64.
@@ -50,6 +51,8 @@ static inline uint64_t shiftright128(const uint64_t lo, const uint64_t hi, const
   // of Ryu, the shift value is always < 64. (In the case
   // RYU_OPTIMIZE_SIZE == 0, the shift value is in the range [49, 58].
   // Otherwise in the range [2, 59].)
+  // However, this function is now also called by s2d, which requires supporting
+  // the larger shift range (TODO: what is the actual range?).
   // Check this here in case a future change requires larger shift
   // values. In this case this function needs to be adjusted.
   assert(dist < 64);
@@ -91,14 +94,8 @@ static inline uint64_t umul128(const uint64_t a, const uint64_t b, uint64_t* con
 static inline uint64_t shiftright128(const uint64_t lo, const uint64_t hi, const uint32_t dist) {
   // We don't need to handle the case dist >= 64 here (see above).
   assert(dist < 64);
-#if defined(RYU_OPTIMIZE_SIZE) || !defined(RYU_32_BIT_PLATFORM)
   assert(dist > 0);
   return (hi << (64 - dist)) | (lo >> dist);
-#else
-  // Avoid a 64-bit shift by taking advantage of the range of shift values.
-  assert(dist >= 32);
-  return (hi << (64 - dist)) | ((uint32_t)(lo >> 32) >> (dist - 32));
-#endif
 }
 
 #endif // defined(HAS_64_BIT_INTRINSICS)
@@ -215,6 +212,7 @@ static inline bool multipleOfPowerOf5(const uint64_t value, const uint32_t p) {
 // Returns true if value is divisible by 2^p.
 static inline bool multipleOfPowerOf2(const uint64_t value, const uint32_t p) {
   assert(value != 0);
+  assert(p < 64);
   // __builtin_ctzll doesn't appear to be faster here.
   return (value & ((1ull << p) - 1)) == 0;
 }

@@ -27,7 +27,7 @@
 //     size by about 10x (only one case, and only double) at the cost of some
 //     performance. Currently requires MSVC intrinsics.
 
-#include "ryu.h"
+#include "ryu/ryu.h"
 
 #include <assert.h>
 #include <stdbool.h>
@@ -40,15 +40,15 @@
 #include <stdio.h>
 #endif
 
-#include "common.h"
-#include "digit_table.h"
-#include "d2s_intrinsics.h"
+#include "ryu/common.h"
+#include "ryu/digit_table.h"
+#include "ryu/d2s_intrinsics.h"
 
 // Include either the small or the full lookup tables depending on the mode.
 #if defined(RYU_OPTIMIZE_SIZE)
-#include "d2s_small_table.h"
+#include "ryu/d2s_small_table.h"
 #else
-#include "d2s_full_table.h"
+#include "ryu/d2s_full_table.h"
 #endif
 
 #define DOUBLE_MANTISSA_BITS 52
