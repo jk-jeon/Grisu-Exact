@@ -17,10 +17,8 @@
 
 #include "../fp_to_chars.h"
 #include "random_float.h"
-#include <charconv>
-#include <cstdlib>
+#include "../benchmark/ryu/ryu.h"
 #include <iostream>
-#include <iomanip>
 #include <string_view>
 
 template <class Float, class TypenameString>
@@ -29,39 +27,30 @@ void uniform_random_test(std::size_t number_of_tests, TypenameString&& type_name
 	using extended_significand_type =
 		typename jkj::grisu_exact_detail::common_info<Float>::extended_significand_type;
 
-	char buffer[41];
+	char buffer1[41];
+	char buffer2[41];
 	auto rg = generate_correctly_seeded_mt19937_64();
 	bool succeeded = true;
 	for (std::size_t test_idx = 0; test_idx < number_of_tests; ++test_idx) {
 		auto x = uniformly_randomly_generate_general_float<Float>(rg);
-		
-		Float roundtrip;
-		std::from_chars(buffer, jkj::fp_to_chars(x, buffer), roundtrip);
 
-		extended_significand_type bits_original, bits_roundtrip;
-		std::memcpy(&bits_original, &x, sizeof(Float));
-		std::memcpy(&bits_roundtrip, &roundtrip, sizeof(Float));
-
-		if (bits_original != bits_roundtrip) {
-			std::cout << "Roundtrip error detected! [original = "
-				<< std::setprecision(40)
-				<< x << " (0x" << std::hex << std::setfill('0');
-			if constexpr (sizeof(Float) == 4)
-				std::cout << std::setw(8);
-			else
-				std::cout << std::setw(16);
-			std::cout << bits_original << std::dec << "), roundtrip = "
-				<< std::setprecision(40)
-				<< roundtrip << " (0x" << std::hex << std::setfill('0');
-			if constexpr (sizeof(Float) == 4)
-				std::cout << std::setw(8);
-			else
-				std::cout << std::setw(16);
-			std::cout << bits_roundtrip << std::dec << ")]\n";
-			succeeded = false;
+		// Check if the output is identical to that of Ryu
+		jkj::fp_to_chars(x, buffer1);
+		if constexpr (std::is_same_v<Float, float>) {
+			f2s_buffered(x, buffer2);
+		}
+		else {
+			d2s_buffered(x, buffer2);
 		}
 
+		std::string_view view1(buffer1);
+		std::string_view view2(buffer2);
 
+		if (view1 != view2) {
+			std::cout << "Error detected! [Ryu = " << buffer2
+				<< ", Grisu-Exact = " << buffer1 << "]\n";
+			succeeded = false;
+		}
 	}
 
 	if (succeeded) {
