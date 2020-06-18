@@ -1041,7 +1041,7 @@ namespace jkj {
 
 		// Forward declaration of the main class
 		template <class Float>
-		class grisu_exact_impl;
+		struct grisu_exact_impl;
 	}
 
 	////////////////////////////////////////////////////////////////////////////////////////
@@ -1572,11 +1572,13 @@ namespace jkj {
 	
 	namespace grisu_exact_detail {
 		////////////////////////////////////////////////////////////////////////////////////////
-		// Utilities for computing the integer part of multiplication with 10^k
+		// The main algorithm
 		////////////////////////////////////////////////////////////////////////////////////////
 
+		// Get sign/decimal significand/decimal exponent from
+		// the bit representation of a floating-point number
 		template <class Float>
-		struct compute_mul_helper : public common_info<Float>
+		struct grisu_exact_impl : private common_info<Float>
 		{
 			using extended_significand_type =
 				typename common_info<Float>::extended_significand_type;
@@ -1586,77 +1588,6 @@ namespace jkj {
 			using common_info<Float>::precision;
 			using common_info<Float>::extended_precision;
 			using common_info<Float>::cache_precision;
-
-			static extended_significand_type compute_mul(
-				extended_significand_type f, cache_entry_type const& cache, int minus_beta) noexcept
-			{
-				if constexpr (sizeof(Float) == 4) {
-					return umul96_upper32(f, cache) >> minus_beta;
-				}
-				else {
-					return umul192_upper64(f, cache) >> minus_beta;
-				}
-			}
-
-			template <grisu_exact_rounding_modes::tag_t tag>
-			static std::uint32_t compute_delta([[maybe_unused]] bool is_edge_case,
-				cache_entry_type const& cache, int minus_beta) noexcept
-			{
-				static constexpr auto q_mp_m1 = extended_precision - precision - 1;
-				static constexpr auto intermediate_precision =
-					sizeof(Float) == 4 ? cache_precision : extended_precision;
-				using intermediate_type = std::conditional_t<sizeof(Float) == 4,
-					cache_entry_type, extended_significand_type>;
-
-				intermediate_type r;
-				if constexpr (sizeof(Float) == 4) {
-					r = cache;
-				}
-				else {
-					r = cache.high();
-				}
-
-				// For nearest rounding
-				if constexpr (tag == grisu_exact_rounding_modes::to_nearest_tag)
-				{
-					if (is_edge_case)
-						r = (r >> 1) + (r >> 2);
-
-					return std::uint32_t(r >> (intermediate_precision - q_mp_m1 + minus_beta));
-				}
-				// For left-directed rounding
-				else if constexpr (tag == grisu_exact_rounding_modes::left_closed_directed_tag)
-				{
-					return std::uint32_t(r >> (intermediate_precision - q_mp_m1 + minus_beta));
-				}
-				// For right-directed rounding
-				else {
-					if (is_edge_case) {
-						return std::uint32_t(r >> (intermediate_precision - (q_mp_m1 - 1) + minus_beta));
-					}
-					else {
-						return std::uint32_t(r >> (intermediate_precision - q_mp_m1 + minus_beta));
-					}
-				}
-			}
-		};
-
-		////////////////////////////////////////////////////////////////////////////////////////
-		// The main algorithm
-		////////////////////////////////////////////////////////////////////////////////////////
-
-		// Get sign/decimal significand/decimal exponent from
-		// the bit representation of a floating-point number
-		template <class Float>
-		class grisu_exact_impl : private compute_mul_helper<Float>
-		{
-			using extended_significand_type =
-				typename common_info<Float>::extended_significand_type;
-			using cache_entry_type =
-				typename common_info<Float>::cache_entry_type;
-
-			using common_info<Float>::precision;
-			using common_info<Float>::extended_precision;
 			using common_info<Float>::sign_bit_mask;
 			using common_info<Float>::exponent_bits;
 			using common_info<Float>::exponent_bias;
@@ -1694,17 +1625,7 @@ namespace jkj {
 			template <unsigned int e>
 			static constexpr extended_significand_type power_of_10 = compute_power(10, e);
 
-			using compute_mul_helper<Float>::compute_mul;
 
-			template <grisu_exact_rounding_modes::tag_t tag>
-			static std::uint32_t compute_delta(bool is_edge_case,
-				cache_entry_type const& cache, int minus_beta) noexcept
-			{
-				return compute_mul_helper<Float>::template compute_delta<tag>(
-					is_edge_case, cache, minus_beta);
-			}
-
-		public:
 			//// The main algorithm assumes the input is a normal/subnormal finite number
 
 			template <bool return_sign, class IntervalTypeProvider, class CorrectRoundingSearch>
@@ -2202,7 +2123,60 @@ namespace jkj {
 				return ret_value;
 			}
 
-		private:
+			static extended_significand_type compute_mul(
+				extended_significand_type f, cache_entry_type const& cache, int minus_beta) noexcept
+			{
+				if constexpr (sizeof(Float) == 4) {
+					return umul96_upper32(f, cache) >> minus_beta;
+				}
+				else {
+					return umul192_upper64(f, cache) >> minus_beta;
+				}
+			}
+
+			template <grisu_exact_rounding_modes::tag_t tag>
+			static std::uint32_t compute_delta([[maybe_unused]] bool is_edge_case,
+				cache_entry_type const& cache, int minus_beta) noexcept
+			{
+				static constexpr auto q_mp_m1 = extended_precision - precision - 1;
+				static constexpr auto intermediate_precision =
+					sizeof(Float) == 4 ? cache_precision : extended_precision;
+				using intermediate_type = std::conditional_t<sizeof(Float) == 4,
+					cache_entry_type, extended_significand_type>;
+
+				intermediate_type r;
+				if constexpr (sizeof(Float) == 4) {
+					r = cache;
+				}
+				else {
+					r = cache.high();
+				}
+
+				// For nearest rounding
+				if constexpr (tag == grisu_exact_rounding_modes::to_nearest_tag)
+				{
+					if (is_edge_case)
+						r = (r >> 1) + (r >> 2);
+
+					return std::uint32_t(r >> (intermediate_precision - q_mp_m1 + minus_beta));
+				}
+				// For left-directed rounding
+				else if constexpr (tag == grisu_exact_rounding_modes::left_closed_directed_tag)
+				{
+					return std::uint32_t(r >> (intermediate_precision - q_mp_m1 + minus_beta));
+				}
+				// For right-directed rounding
+				else {
+					if (is_edge_case) {
+						return std::uint32_t(r >> (intermediate_precision - (q_mp_m1 - 1) + minus_beta));
+					}
+					else {
+						return std::uint32_t(r >> (intermediate_precision - q_mp_m1 + minus_beta));
+					}
+				}
+			}
+
+
 			static bool is_zf_strictly_smaller_than_deltaf(
 				extended_significand_type fl,
 				int minus_beta, cache_entry_type const& cache) noexcept

@@ -38,10 +38,10 @@ void verify_delta_computation()
 			auto cache = get_cache<float_type>(k);
 
 			auto deltai_orthodox
-				= compute_mul_helper<float_type>::compute_mul(fdelta, cache, -common_info<float_type>::gamma);
+				= grisu_exact_impl<float_type>::compute_mul(fdelta, cache, -common_info<float_type>::gamma);
 
 			auto deltai_fast
-				= compute_mul_helper<float_type>::compute_delta<jkj::grisu_exact_rounding_modes::to_nearest_tag>(
+				= grisu_exact_impl<float_type>::compute_delta<jkj::grisu_exact_rounding_modes::to_nearest_tag>(
 					true, cache, -common_info<float_type>::gamma);
 
 			if (deltai_orthodox != deltai_fast) {
