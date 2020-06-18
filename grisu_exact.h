@@ -36,6 +36,8 @@
 // No, they aren't.
 #ifndef __clang__
 #define JKJ_GRISU_EXACT_SAFEBUFFERS __declspec(safebuffers)
+#else
+#define JKJ_GRISU_EXACT_SAFEBUFFERS
 #endif
 #else
 #define JKJ_GRISU_EXACT_SAFEBUFFERS
