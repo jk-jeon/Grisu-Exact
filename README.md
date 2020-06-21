@@ -87,7 +87,7 @@ The following benchmark result is obtained using Milo's dtoa benchmark framework
 There is also a benchmark done by myself:
 ![digits_benchmark_binary32](benchmark_results/digits_benchmark_binary32.png)
 ![digits_benchmark_binary64](benchmark_results/digits_benchmark_binary64.png)
-(top: benchmark for ````float```` data, bottom: benchmark for ````double```` data)
+(top: benchmark for ````float```` data, bottom: benchmark for ````double```` data. Solid lines are the averages, dashed lines are the medians, and the shaded regions show 30%, 50%, and 70% percentiles.)
 
 Here is another performance plot with uniformly randomly generated ````float````(top) or ````double````(bottom) data:
 ![uniform_benchmark_binary32](benchmark_results/uniform_benchmark_binary32.png)
