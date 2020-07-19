@@ -158,9 +158,7 @@ namespace jkj {
 
 		// Get upper 32-bits of multiplication of a 32-bit unsigned integer and a 64-bit unsigned integer
 		inline std::uint32_t umul96_upper32(std::uint32_t x, std::uint64_t y) noexcept {
-			auto g0 = std::uint64_t(x) * (y >> 32);
-			auto g1 = std::uint64_t(x) * (y & 0xffffffff);
-			return std::uint32_t((g0 + (g1 >> 32)) >> 32);
+			return std::uint32_t(umul128_upper64(x, y));
 		}
 
 
