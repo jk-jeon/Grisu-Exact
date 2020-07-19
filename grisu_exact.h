@@ -161,6 +161,41 @@ namespace jkj {
 			return std::uint32_t(umul128_upper64(x, y));
 		}
 
+		// Check if a number is a multiple of 2^exp
+		template <class UInt>
+		inline bool divisible_by_power_of_2(UInt x, int exp) noexcept {
+			static_assert(std::is_same_v<UInt, std::uint32_t> || std::is_same_v<UInt, std::uint64_t>);
+			assert(exp >= 1);
+			assert(x != 0);
+#if defined(_MSC_VER) && defined(_M_X64)
+			unsigned long index;
+			if constexpr (std::is_same_v<UInt, std::uint32_t>) {
+				_BitScanForward(&index, x);
+			}
+			else {
+				_BitScanForward64(&index, x);
+			}
+			return int(index) >= exp;
+#elif (defined(__GNUC__) || defined(__clang__)) && defined(__x86_64__)
+			int index;
+			if constexpr (std::is_same_v<UInt, std::uint32_t>) {
+				static_assert(sizeof(unsigned long) == 4,
+					"jkj::grisu_exact: unsigned long should be 4 bytes long");
+				index = __builtin_ctz((unsigned long)x);
+			}
+			else {
+				static_assert(sizeof(unsigned long long) == 8,
+					"jkj::grisu_exact: unsigned long long should be 8 bytes long");
+				index = __builtin_ctzll((unsigned long long)x);
+			}
+			return index >= exp;
+#else
+			if (exp >= int(sizeof(UInt) * 8))
+				return false;
+			return f == ((f >> exp) << exp); 
+#endif
+		}
+
 
 		////////////////////////////////////////////////////////////////////////////////////////
 		// Fast and accurate log floor calculation
@@ -1680,7 +1715,7 @@ namespace jkj {
 				assert(-minus_beta >= alpha && -minus_beta <= gamma);
 
 				// Compute zi and deltai
-				auto cache = jkj::grisu_exact_detail::get_cache<Float>(-minus_k);
+				auto const cache = jkj::grisu_exact_detail::get_cache<Float>(-minus_k);
 
 				extended_significand_type zi;
 				if constexpr (IntervalTypeProvider::tag ==
@@ -1872,12 +1907,12 @@ namespace jkj {
 					// We already know r is at most deltai
 					deltai -= std::uint32_t(r);
 
-					auto current_digit = ret_value.significand % 10;
+					auto const current_digit = ret_value.significand % 10;
 
 					// Perform binary search to find the minimum
 					auto steps = current_digit / 2;
 					while (steps != 0) {
-						auto displacement = steps * divisor;
+						auto const displacement = steps * divisor;
 						if (displacement > deltai)
 							steps /= 2;
 						else {
@@ -1902,7 +1937,7 @@ namespace jkj {
 							// (floor(2y) + 1) / 2 for tie-to-up, ceil(2y) / 2 for tie-to-down
 
 							// First, compute floor(2y)
-							auto two_yi = compute_mul(significand, cache, minus_beta - 1);
+							auto const two_yi = compute_mul(significand, cache, minus_beta - 1);
 
 							if constexpr (CorrectRoundingSearch::tag ==
 								grisu_exact_correct_rounding::tie_to_even_tag ||
@@ -2310,12 +2345,7 @@ namespace jkj {
 						if constexpr (case_id == integer_check_case_id::two_times_fc) {
 							--exp_2;
 						}
-
-						assert(exp_2 >= 1);
-						// Perhaps better to utilize TZCNT?
-						if (exp_2 >= int(extended_precision))
-							return false;
-						return f == ((f >> exp_2) << exp_2);
+						return divisible_by_power_of_2(f, exp_2);
 					}
 					// Both exponents for 2 and 5 are nonnegative
 					else if (exponent <= max_exponent_for_k_geq_0) {
@@ -2517,8 +2547,8 @@ namespace jkj {
 				std::uint32_t deltai,
 				cache_entry_type const& cache) noexcept
 			{
-				auto quotient = ret_value.significand / power_of_10<lambda>;
-				auto new_r = r + divisor * (ret_value.significand % power_of_10<lambda>);
+				auto const quotient = ret_value.significand / power_of_10<lambda>;
+				auto const new_r = r + divisor * (ret_value.significand % power_of_10<lambda>);
 
 				// Check if delta is still greater than or equal to the remainder
 				// delta should be strictly greater if the left boundary is not contained
@@ -2571,8 +2601,8 @@ namespace jkj {
 				cache_entry_type const& cache) noexcept
 			{
 				// We already know r < 10^initial_kappa < 2^32
-				auto quotient = std::uint32_t(r) / std::uint32_t(power_of_10<initial_kappa - lambda>);
-				auto new_r = std::uint32_t(r) % std::uint32_t(power_of_10<initial_kappa - lambda>);
+				auto const quotient = std::uint32_t(r) / std::uint32_t(power_of_10<initial_kappa - lambda>);
+				auto const new_r = std::uint32_t(r) % std::uint32_t(power_of_10<initial_kappa - lambda>);
 
 				// Check if the remainder is still greater than or equal to the delta
 				// remainder should be strictly greater if the left boundary is contained
@@ -2606,7 +2636,7 @@ namespace jkj {
 				epsiloni *= std::uint32_t(power_of_10<lambda>);
 				ret_value.significand *= power_of_10<lambda>;
 				ret_value.significand += quotient;
-				ret_value.exponent -= lambda;				
+				ret_value.exponent -= lambda;
 				return false;
 			}
 		};
