@@ -177,7 +177,7 @@ Float randomly_generate_float_with_given_digits(unsigned int digits, RandGen& rg
 			else
 				result = std::stod(str);
 
-			// Withdraw if a shorter representation exists
+			// Discrad if a shorter representation exists
 			auto roundtrip = jkj::grisu_exact(result);
 			if (roundtrip.significand < extended_significand_type(from))
 				continue;
