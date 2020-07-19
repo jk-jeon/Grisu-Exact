@@ -41,6 +41,7 @@ static void benchmark_test(std::string_view float_name,
 	std::size_t number_of_iterations)
 {
 	auto& inst = benchmark_holder<Float>::get_instance();
+	std::cout << "Generating random samples...\n";
 	inst.prepare_samples(number_of_uniform_samples, number_of_digits_samples_per_digits);
 	auto out = inst.run(number_of_iterations, float_name);
 

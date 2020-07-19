@@ -140,44 +140,54 @@ Float randomly_generate_float_with_given_digits(unsigned int digits, RandGen& rg
 		static_assert(std::is_same_v<Float, double>);
 		assert(digits <= 17);
 	}
+	
+	// Generate sign uniformly randomly
+	signed_int_t sign = std::uniform_int_distribution<signed_int_t>{ 0, 1 }(rg) == 0 ? 1 : -1;
+	
 
-	// Generate exponent uniformly randomly
-	auto exp = std::uniform_int_distribution<int>{
-		std::numeric_limits<Float>::min_exponent10 - (int(digits) - 1),
-		std::numeric_limits<Float>::max_exponent10 - (int(digits) - 1) }(rg);
-
+	// Try to generate significand uniformly randomly
 	Float result;
-	while (true) {
-		// Try to generate significand uniformly randomly
-		signed_int_t from = 1;
-		for (unsigned int e = 1; e < digits; ++e) {
+	signed_int_t from = 0, to = 9;
+	if (digits > 1) {
+		from = 1;
+		for (unsigned int e = 1; e < digits - 1; ++e) {
 			from *= 10;
 		}
-		auto to = from * 10 - 1;
-		// Allow 0 to be generated
-		if (from == 1)
-			--from;
-		auto significand = std::uniform_int_distribution<signed_int_t>{ from, to }(rg);
+		to = from * 10 - 1;
+	}
 
-		// Generate sign uniformly randomly
-		if (std::uniform_int_distribution<int>{ 0, 1 }(rg) != 0)
-			significand *= -1;
+	while (true) {
+		auto significand = std::uniform_int_distribution<signed_int_t>{ from, to }(rg);
+		if (digits > 1) {
+			significand *= 10;
+			significand += std::uniform_int_distribution<signed_int_t>{ 1, 9 }(rg);
+		}
+
+		// Generate exponent uniformly randomly
+		auto exp = std::uniform_int_distribution<int>{
+			std::numeric_limits<Float>::min_exponent10 - (int(digits) - 1),
+			std::numeric_limits<Float>::max_exponent10 - (int(digits) - 1) }(rg);
 
 		// Cook up
-		auto str = std::to_string(significand) + 'e' + std::to_string(exp);
+		auto str = std::to_string(sign * significand) + 'e' + std::to_string(exp);
 
 		try {
 			if constexpr (std::is_same_v<Float, float>)
 				result = std::stof(str);
 			else
 				result = std::stod(str);
+
+			// Withdraw if a shorter representation exists
+			auto roundtrip = jkj::grisu_exact(result);
+			if (roundtrip.significand < extended_significand_type(from))
+				continue;
 		}
 		catch (std::out_of_range&) {
 			continue;
 		}
 		break;
 	}
-	
+
 	return result;
 }
 
