@@ -190,8 +190,9 @@ namespace jkj {
 			}
 			return index >= exp;
 #else
-			if (exp >= int(sizeof(UInt) * 8))
+			if (exp >= int(sizeof(UInt) * 8)) {
 				return false;
+			}
 			return f == ((f >> exp) << exp); 
 #endif
 		}
@@ -1069,8 +1070,7 @@ namespace jkj {
 
 		template <class Float>
 		constexpr typename common_info<Float>::cache_entry_type const& get_cache(int k) noexcept {
-			assert(k >= common_info<Float>::min_k &&
-				k <= common_info<Float>::max_k);
+			assert(k >= common_info<Float>::min_k && k <= common_info<Float>::max_k);
 			return cache_holder<Float>::cache[std::size_t(k - common_info<Float>::min_k)];
 		}
 
@@ -1152,7 +1152,11 @@ namespace jkj {
 		}
 
 		bool is_nonzero() const noexcept {
-			return (f & ~sign_bit_mask) != 0;
+			// vs (f & ~sign_bit_mask) != 0;
+			// It seems that there is no AND instruction for 64-bit immediate value in x86,
+			// thus (f & ~sign_bit_mask) != 0 generates 3 instructions (load, and, compare),
+			// while this generates only two (shift, compare).
+			return (f << 1) != 0;
 		}
 
 		// Allows positive and negative zeros
@@ -1162,12 +1166,18 @@ namespace jkj {
 
 		// Allows negative zero and negative NaN's, but not allow positive zero
 		bool is_negative() const noexcept {
-			return (f & sign_bit_mask) != 0;
+			// vs (f & sign_bit_mask) != 0;
+			// It seems that there is no AND instruction for 64-bit immediate value in x86,
+			// thus (f & sign_bit_mask) != 0 generates 3 instructions (load, and, compare),
+			// while this generates only two (shift, compare).
+			return (f >> (extended_precision - 1)) != 0;
 		}
 
 		// Allows positive zero and positive NaN's, but not allow negative zero
 		bool is_positive() const noexcept {
-			return (f & sign_bit_mask) == 0;
+			// vs (f & sign_bit_mask) == 0;
+			// Ditto
+			return (f >> (extended_precision - 1)) == 0;
 		}
 
 		bool is_positive_infinity() const noexcept {
@@ -1190,8 +1200,9 @@ namespace jkj {
 		}
 
 		bool is_quiet_nan() const noexcept {
-			if (!is_nan())
+			if (!is_nan()) {
 				return false;
+			}
 
 			auto quiet_or_signal_indicator = extended_significand_type(1) << (precision - 1);
 			auto quiet_or_signal = f & quiet_or_signal_indicator;
@@ -1649,8 +1660,9 @@ namespace jkj {
 				extended_significand_type b, unsigned int e) noexcept
 			{
 				extended_significand_type r = 1;
-				for (unsigned int i = 0; i < e; ++i)
+				for (unsigned int i = 0; i < e; ++i) {
 					r *= b;
+				}
 				return r;
 			}
 
@@ -1846,8 +1858,9 @@ namespace jkj {
 						// Decrease kappa until 10^kappa becomes smaller than delta
 						// If left boundary is included, 10^kappa can also be equal to delta
 						while (true) {
-							if (divisor < deltai)
+							if (divisor < deltai) {
 								break;
+							}
 							else if (divisor == deltai) {
 								// For nearest rounding only
 								if constexpr (IntervalTypeProvider::tag ==
@@ -1913,8 +1926,9 @@ namespace jkj {
 					auto steps = current_digit / 2;
 					while (steps != 0) {
 						auto const displacement = steps * divisor;
-						if (displacement > deltai)
+						if (displacement > deltai) {
 							steps /= 2;
+						}
 						else {
 							ret_value.significand -= steps;
 							deltai -= std::uint32_t(displacement);
@@ -2078,8 +2092,9 @@ namespace jkj {
 						// Check fractional if necessary
 						if (epsiloni == 0) {
 							auto yi = compute_mul(significand, cache, minus_beta);
-							if (yi > approx_y)
+							if (yi > approx_y) {
 								--steps;
+							}
 							else if (yi == approx_y) {
 								if constexpr (CorrectRoundingSearch::tag ==
 									grisu_exact_correct_rounding::tie_to_even_tag ||
@@ -2114,8 +2129,9 @@ namespace jkj {
 									--steps;
 								}
 								else {
-									if (!is_product_integer<integer_check_case_id::other>(significand, exponent, minus_k))
+									if (!is_product_integer<integer_check_case_id::other>(significand, exponent, minus_k)) {
 										--steps;
+									}
 								}
 							}
 						}
@@ -2128,8 +2144,9 @@ namespace jkj {
 						{
 							// We know already r is at most deltai
 							deltai -= std::uint32_t(r);
-							if (divisor > deltai)
+							if (divisor > deltai) {
 								steps = 0;
+							}
 							else if (divisor == deltai) {
 								switch (zf_vs_deltaf) {
 								case zf_vs_deltaf_t::zf_larger:
@@ -2190,8 +2207,9 @@ namespace jkj {
 				// For nearest rounding
 				if constexpr (tag == grisu_exact_rounding_modes::to_nearest_tag)
 				{
-					if (is_edge_case)
+					if (is_edge_case) {
 						r = (r >> 1) + (r >> 2);
+					}
 
 					return std::uint32_t(r >> (intermediate_precision - q_mp_m1 + minus_beta));
 				}
@@ -2283,8 +2301,9 @@ namespace jkj {
 									f /= power_of_5<12>;
 									minus_k -= 12;
 								}
-								else
+								else {
 									return false;
+								}
 							}
 							assert(0 <= minus_k && minus_k <= 11);
 							switch (minus_k) {
@@ -2334,7 +2353,7 @@ namespace jkj {
 				}
 				// Case IV or V or VI: f = fc or fc +- 2^(q-p-1)
 				else {
-					static constexpr auto exp_2_upper_bound =
+					constexpr auto exp_2_upper_bound =
 						case_id == integer_check_case_id::two_times_fc ?
 						integer_check_exponent_lower_bound_for_q_mp :
 						integer_check_exponent_lower_bound_for_q_mp_m1;
@@ -2389,8 +2408,9 @@ namespace jkj {
 									f /= power_of_5<11>;
 									minus_k -= 11;
 								}
-								else
+								else {
 									return false;
+								}
 							}
 							assert(0 <= minus_k && minus_k <= 11);
 							switch (minus_k) {
@@ -2552,8 +2572,9 @@ namespace jkj {
 
 				// Check if delta is still greater than or equal to the remainder
 				// delta should be strictly greater if the left boundary is not contained
-				if (deltai < new_r)
+				if (deltai < new_r) {
 					return false;
+				}
 				else if (deltai == new_r) {
 					switch (zf_vs_deltaf) {
 					case zf_vs_deltaf_t::zf_larger:
@@ -2607,8 +2628,9 @@ namespace jkj {
 				// Check if the remainder is still greater than or equal to the delta
 				// remainder should be strictly greater if the left boundary is contained
 
-				if (new_r < deltai)
+				if (new_r < deltai) {
 					return true;
+				}
 				else if (deltai == new_r) {
 					switch (zf_vs_deltaf) {
 					case zf_vs_deltaf_t::zf_smaller:

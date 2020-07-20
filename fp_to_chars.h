@@ -41,7 +41,7 @@ namespace jkj {
 				*buffer = '-';
 				++buffer;
 			}
-			if ((br.f << 1) != 0) {
+			if (br.is_nonzero()) {
 				if constexpr (sizeof(Float) == 4) {
 					return fp_to_chars_detail::float_to_chars(grisu_exact<false>(x,
 						std::forward<RoundingMode>(rounding_mode),
