@@ -179,7 +179,7 @@ Float randomly_generate_float_with_given_digits(unsigned int digits, RandGen& rg
 				result = std::stod(str);
 			}
 
-			// Discrad if a shorter representation exists
+			// Discard if a shorter representation exists
 			// We don't need to care about coorect rounding here
 			auto roundtrip = jkj::grisu_exact(result,
 				jkj::grisu_exact_rounding_modes::nearest_to_even{},
