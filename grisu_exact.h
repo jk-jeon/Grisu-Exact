@@ -2447,7 +2447,7 @@ namespace jkj {
 				}
 			}
 
-			enum class zf_vs_deltaf_t {
+			enum class zf_vs_deltaf_t : std::uint8_t {
 				not_compared_yet = 0,
 				zf_larger = 1,
 				zf_smaller = 2
