@@ -161,6 +161,17 @@ namespace jkj {
 			return std::uint32_t(umul128_upper64(x, y));
 		}
 
+		// Compute b^e in compile-time
+		template <class UInt>
+		constexpr UInt compute_power(UInt b, unsigned int e) noexcept
+		{
+			UInt r = 1;
+			for (unsigned int i = 0; i < e; ++i) {
+				r *= b;
+			}
+			return r;
+		}
+
 		// Check if a number is a multiple of 2^exp
 		template <class UInt>
 		inline bool divisible_by_power_of_2(UInt x, int exp) noexcept {
@@ -195,6 +206,40 @@ namespace jkj {
 			}
 			return f == ((f >> exp) << exp); 
 #endif
+		}
+
+		// Check if a number is a multiple of 5^exp
+		// Use the algorithm introduced in
+		// "Quick Modular Calculations" by Cassio Neri, Dec. 2019, ACCU Overload Journal #154, page 13
+		template <class UInt>
+		constexpr UInt compute_modular_inverse_of_5() {
+			// Use Euler's theorem
+			// phi(p^k) = p^(k-1) * (p-1), so phi(2^n) = 2^(n-1).
+			// Hence, we need to compute 5^(2^(n-1) - 1), which is equal to
+			// 5^1 * 5^2 * 5^4 * 5^8 * ... * 5^(2^(n-2)),
+			// which can be computed as:
+			constexpr unsigned int n = std::numeric_limits<UInt>::digits;
+			UInt r = 5;
+			for (unsigned int e = 1; e <= n - 2; ++e) {
+				r = 5 * r * r;
+			}
+			return r;
+		}
+		template <unsigned int exp, class UInt>
+		constexpr bool divisible_by_power_of_5(UInt x) noexcept {
+			// Compute the number of multiples of 5^exp
+			constexpr auto max_quotient =
+				std::numeric_limits<UInt>::max() / compute_power(UInt(5), exp);
+
+			// Compute the multiplier
+			constexpr auto mod_inv = compute_power(compute_modular_inverse_of_5<UInt>(), exp);
+
+			return (x * mod_inv) <= max_quotient;
+		}
+		template <unsigned int exp, class UInt>
+		constexpr UInt divide_by_power_of_5_assuming_divisibility(UInt x) noexcept {
+			constexpr auto mod_inv = compute_power(compute_modular_inverse_of_5<UInt>(), exp);
+			return x * mod_inv;
 		}
 
 
@@ -1656,21 +1701,8 @@ namespace jkj {
 			using common_info<Float>::integer_check_exponent_upper_bound_for_p_p2;
 			using common_info<Float>::integer_check_exponent_upper_bound_for_p_p1;
 
-			static constexpr extended_significand_type compute_power(
-				extended_significand_type b, unsigned int e) noexcept
-			{
-				extended_significand_type r = 1;
-				for (unsigned int i = 0; i < e; ++i) {
-					r *= b;
-				}
-				return r;
-			}
-
 			template <unsigned int e>
-			static constexpr extended_significand_type power_of_5 = compute_power(5, e);
-
-			template <unsigned int e>
-			static constexpr extended_significand_type power_of_10 = compute_power(10, e);
+			static constexpr auto power_of_10 = compute_power(extended_significand_type(10), e);
 
 
 			//// The main algorithm assumes the input is a normal/subnormal finite number
@@ -2271,25 +2303,25 @@ namespace jkj {
 							assert(1 <= minus_k && minus_k <= 10);
 							switch (minus_k) {
 							case 1:
-								return f % power_of_5<1> == 0;
+								return divisible_by_power_of_5<1>(f);
 							case 2:
-								return f % power_of_5<2> == 0;
+								return divisible_by_power_of_5<2>(f);
 							case 3:
-								return f % power_of_5<3> == 0;
+								return divisible_by_power_of_5<3>(f);
 							case 4:
-								return f % power_of_5<4> == 0;
+								return divisible_by_power_of_5<4>(f);
 							case 5:
-								return f % power_of_5<5> == 0;
+								return divisible_by_power_of_5<5>(f);
 							case 6:
-								return f % power_of_5<6> == 0;
+								return divisible_by_power_of_5<6>(f);
 							case 7:
-								return f % power_of_5<7> == 0;
+								return divisible_by_power_of_5<7>(f);
 							case 8:
-								return f % power_of_5<8> == 0;
+								return divisible_by_power_of_5<8>(f);
 							case 9:
-								return f % power_of_5<9> == 0;
+								return divisible_by_power_of_5<9>(f);
 							default:	// case 10:
-								return f % power_of_5<10> == 0;
+								return divisible_by_power_of_5<10>(f);
 							}
 						}
 						// For IEEE-754 binary64
@@ -2297,8 +2329,8 @@ namespace jkj {
 							// Cut into two parts and then appply the table-based approach
 							assert(1 <= minus_k && minus_k <= 23);
 							if (minus_k >= 12) {
-								if (f % power_of_5<12> == 0) {
-									f /= power_of_5<12>;
+								if (divisible_by_power_of_5<12>(f)) {
+									f = divide_by_power_of_5_assuming_divisibility<12>(f);
 									minus_k -= 12;
 								}
 								else {
@@ -2307,30 +2339,28 @@ namespace jkj {
 							}
 							assert(0 <= minus_k && minus_k <= 11);
 							switch (minus_k) {
-							case 0:
-								return true;
 							case 1:
-								return f % power_of_5<1> == 0;
+								return divisible_by_power_of_5<1>(f);
 							case 2:
-								return f % power_of_5<2> == 0;
+								return divisible_by_power_of_5<2>(f);
 							case 3:
-								return f % power_of_5<3> == 0;
+								return divisible_by_power_of_5<3>(f);
 							case 4:
-								return f % power_of_5<4> == 0;
+								return divisible_by_power_of_5<4>(f);
 							case 5:
-								return f % power_of_5<5> == 0;
+								return divisible_by_power_of_5<5>(f);
 							case 6:
-								return f % power_of_5<6> == 0;
+								return divisible_by_power_of_5<6>(f);
 							case 7:
-								return f % power_of_5<7> == 0;
+								return divisible_by_power_of_5<7>(f);
 							case 8:
-								return f % power_of_5<8> == 0;
+								return divisible_by_power_of_5<8>(f);
 							case 9:
-								return f % power_of_5<9> == 0;
+								return divisible_by_power_of_5<9>(f);
 							case 10:
-								return f % power_of_5<10> == 0;
+								return divisible_by_power_of_5<10>(f);
 							default:	// case 11:
-								return f % power_of_5<11> == 0;
+								return divisible_by_power_of_5<11>(f);
 							}
 						}
 					}
@@ -2378,25 +2408,25 @@ namespace jkj {
 							assert(1 <= minus_k && minus_k <= 10);
 							switch (minus_k) {
 							case 1:
-								return f % power_of_5<1> == 0;
+								return divisible_by_power_of_5<1>(f);
 							case 2:
-								return f % power_of_5<2> == 0;
+								return divisible_by_power_of_5<2>(f);
 							case 3:
-								return f % power_of_5<3> == 0;
+								return divisible_by_power_of_5<3>(f);
 							case 4:
-								return f % power_of_5<4> == 0;
+								return divisible_by_power_of_5<4>(f);
 							case 5:
-								return f % power_of_5<5> == 0;
+								return divisible_by_power_of_5<5>(f);
 							case 6:
-								return f % power_of_5<6> == 0;
+								return divisible_by_power_of_5<6>(f);
 							case 7:
-								return f % power_of_5<7> == 0;
+								return divisible_by_power_of_5<7>(f);
 							case 8:
-								return f % power_of_5<8> == 0;
+								return divisible_by_power_of_5<8>(f);
 							case 9:
-								return f % power_of_5<9> == 0;
+								return divisible_by_power_of_5<9>(f);
 							default:	// case 10:
-								return f % power_of_5<10> == 0;
+								return divisible_by_power_of_5<10>(f);
 							}
 						}
 						// For IEEE-754 binary64
@@ -2404,8 +2434,8 @@ namespace jkj {
 							// Cut into two parts and then appply the table-based approach
 							assert(1 <= minus_k && minus_k <= 22);
 							if (minus_k >= 11) {
-								if (f % power_of_5<11> == 0) {
-									f /= power_of_5<11>;
+								if (divisible_by_power_of_5<11>(f)) {
+									f = divide_by_power_of_5_assuming_divisibility<11>(f);
 									minus_k -= 11;
 								}
 								else {
@@ -2417,27 +2447,27 @@ namespace jkj {
 							case 0:
 								return true;
 							case 1:
-								return f % power_of_5<1> == 0;
+								return divisible_by_power_of_5<1>(f);
 							case 2:
-								return f % power_of_5<2> == 0;
+								return divisible_by_power_of_5<2>(f);
 							case 3:
-								return f % power_of_5<3> == 0;
+								return divisible_by_power_of_5<3>(f);
 							case 4:
-								return f % power_of_5<4> == 0;
+								return divisible_by_power_of_5<4>(f);
 							case 5:
-								return f % power_of_5<5> == 0;
+								return divisible_by_power_of_5<5>(f);
 							case 6:
-								return f % power_of_5<6> == 0;
+								return divisible_by_power_of_5<6>(f);
 							case 7:
-								return f % power_of_5<7> == 0;
+								return divisible_by_power_of_5<7>(f);
 							case 8:
-								return f % power_of_5<8> == 0;
+								return divisible_by_power_of_5<8>(f);
 							case 9:
-								return f % power_of_5<9> == 0;
+								return divisible_by_power_of_5<9>(f);
 							case 10:
-								return f % power_of_5<10> == 0;
+								return divisible_by_power_of_5<10>(f);
 							default:	// case 11:
-								return f % power_of_5<11> == 0;
+								return divisible_by_power_of_5<11>(f);
 							}
 						}
 					}
