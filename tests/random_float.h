@@ -172,15 +172,21 @@ Float randomly_generate_float_with_given_digits(unsigned int digits, RandGen& rg
 		auto str = std::to_string(sign * significand) + 'e' + std::to_string(exp);
 
 		try {
-			if constexpr (std::is_same_v<Float, float>)
+			if constexpr (std::is_same_v<Float, float>) {
 				result = std::stof(str);
-			else
+			}
+			else {
 				result = std::stod(str);
+			}
 
 			// Discrad if a shorter representation exists
-			auto roundtrip = jkj::grisu_exact(result);
-			if (roundtrip.significand < extended_significand_type(from))
+			// We don't need to care about coorect rounding here
+			auto roundtrip = jkj::grisu_exact(result,
+				jkj::grisu_exact_rounding_modes::nearest_to_even{},
+				jkj::grisu_exact_correct_rounding::do_not_care{});
+			if (from != 0 && roundtrip.significand <= extended_significand_type(from * 10)) {
 				continue;
+			}
 		}
 		catch (std::out_of_range&) {
 			continue;
