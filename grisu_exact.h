@@ -1691,8 +1691,8 @@ namespace jkj {
 					ret_value.is_negative = br.is_negative();
 				}
 				auto significand = br.f << exponent_bits;
-
-				auto exponent = int((br.f & ~sign_bit_mask) >> precision);
+				 
+				auto exponent = int((br.f >> precision) & (exponent_bits_mask >> precision));
 				// Deal with normal/subnormal dichotomy
 				if (exponent != 0) {
 					significand |= sign_bit_mask;
