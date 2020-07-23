@@ -34,36 +34,36 @@ namespace jkj {
 			auto& ret_max = ret.second;
 			ret_max = b;
 
-			// a * si - b * ti = ai
-			// b * vi - a * ui = bi
+			// a * si - b * t = ai
+			// b * v - a * uj = bj
 			std::vector<bigint_t> ai{ a };
-			std::vector<bigint_t> bi{ b };
+			std::vector<bigint_t> bj{ b };
 			std::vector<std::uint64_t> si{ 1 };
-			std::vector<std::uint64_t> ui{ 0 };
-			bigint_t ti{ 0 };
-			bigint_t vi{ 1 };
+			std::vector<std::uint64_t> uj{ 0 };
+			bigint_t t{ 0 };
+			bigint_t v{ 1 };
 
 			while (true) {
-				if (bi.back() >= ai.back()) {
-					auto new_bi = bi.back();
+				if (bj.back() >= ai.back()) {
+					auto new_bi = bj.back();
 					auto q = new_bi.long_division(ai.back());
 					auto new_ui = q * si.back();
-					new_ui += ui.back();
+					new_ui += uj.back();
 
 					if (new_ui >= N) {
 						ret_min = ai.back();
-						ret_max -= bi.back();
+						ret_max -= bj.back();
 
-						auto remaining = N - ui.back();
-						auto j = ai.size();
+						auto remaining = N - uj.back();
+						auto i = ai.size();
 						while (remaining > 0) {
-							assert(j != 0);
-							--j;
+							assert(i != 0);
+							--i;
 
-							auto qr = remaining / si[j];
-							remaining %= si[j];
+							auto qr = remaining / si[i];
+							remaining %= si[i];
 
-							auto new_max_candidate = ai[j];
+							auto new_max_candidate = ai[i];
 							new_max_candidate *= qr;
 							new_max_candidate += ret_max;
 
@@ -72,8 +72,8 @@ namespace jkj {
 							else {
 								auto margin = b;
 								margin -= ret_max;
-								q = margin.long_division(ai[j]);
-								ret_max += q * ai[j];
+								q = margin.long_division(ai[i]);
+								ret_max += q * ai[i];
 
 								return ret;
 							}
@@ -81,50 +81,50 @@ namespace jkj {
 						return ret;
 					}
 
-					bi.push_back(new_bi);
+					bj.push_back(new_bi);
 					assert(new_ui.leading_one_pos.element_pos == 0);
-					ui.push_back(new_ui.elements[0]);
-					vi += q * ti;
+					uj.push_back(new_ui.elements[0]);
+					v += q * t;
 				}
 
-				if (bi.back() == 0) {
+				if (bj.back() == 0) {
 					ret_min = 0;
 					ret_max -= 1;
 					return ret;
 				}
 
-				if (ai.back() >= bi.back()) {
+				if (ai.back() >= bj.back()) {
 					auto new_ai = ai.back();
-					auto q = new_ai.long_division(bi.back());
-					auto new_si = q * ui.back();
+					auto q = new_ai.long_division(bj.back());
+					auto new_si = q * uj.back();
 					new_si += si.back();
 
 					if (new_si >= N) {
 						ret_min = ai.back();
-						ret_max -= bi.back();
+						ret_max -= bj.back();
 
 						auto remaining = N - si.back();
-						auto j = bi.size();
+						auto j = bj.size();
 						while (remaining > 0) {
 							assert(j != 0);
 							--j;
 
-							if (ui[j] != 0) {
-								auto qr = remaining / ui[j];
-								remaining %= ui[j];
+							if (uj[j] != 0) {
+								auto qr = remaining / uj[j];
+								remaining %= uj[j];
 
-								auto new_min_diff = bi[j];
+								auto new_min_diff = bj[j];
 								new_min_diff *= qr;
 
 								if (new_min_diff < ret_min)
 									ret_min -= new_min_diff;
 								else {
-									ret_min.long_division(bi[j]);
+									ret_min.long_division(bj[j]);
 									return ret;
 								}
 							}
 							else {
-								ret_min.long_division(bi[j]);
+								ret_min.long_division(bj[j]);
 								return ret;
 							}
 						}
@@ -134,7 +134,7 @@ namespace jkj {
 					ai.push_back(new_ai);
 					assert(new_si.leading_one_pos.element_pos == 0);
 					si.push_back(new_si.elements[0]);
-					ti += q * vi;
+					t += q * v;
 				}
 
 				if (ai.back() == 0) {
