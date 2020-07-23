@@ -261,13 +261,6 @@ namespace jkj {
 			auto const& entry = divisibility_test_table_holder<UInt>::table.value[exp];
 			return (x * entry.mod_inv) <= entry.max_quotient;
 		}
-		template <unsigned int exp, class UInt>
-		constexpr UInt divide_by_power_of_5_assuming_divisibility(UInt x) noexcept {
-			static_assert(exp < divisibility_test_table_holder<UInt>::table.size);
-			auto const& entry = divisibility_test_table_holder<UInt>::table.value[exp];
-			return x * entry.mod_inv;
-		}
-		
 
 
 		////////////////////////////////////////////////////////////////////////////////////////
