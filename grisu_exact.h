@@ -225,22 +225,49 @@ namespace jkj {
 			}
 			return r;
 		}
-		template <unsigned int exp, class UInt>
-		constexpr bool divisible_by_power_of_5(UInt x) noexcept {
-			// Compute the number of multiples of 5^exp
-			constexpr auto max_quotient =
-				std::numeric_limits<UInt>::max() / compute_power(UInt(5), exp);
+		template <class UInt>
+		struct divisibility_test_table_entry {
+			UInt	max_quotient;
+			UInt	mod_inv;
+		};
+		// std::array might be an overkill
+		template <class UInt, unsigned int N>
+		struct divisibility_test_table {
+			static constexpr auto size = N;
+			divisibility_test_table_entry<UInt> value[N];
+		};
+		template <class UInt>
+		constexpr auto generate_divisibility_test_table() noexcept {
+			constexpr std::size_t size = std::is_same_v<UInt, std::uint32_t> ? 12 : 24;
+			using return_type = divisibility_test_table<UInt, size>;
 
-			// Compute the multiplier
-			constexpr auto mod_inv = compute_power(compute_modular_inverse_of_5<UInt>(), exp);
+			return_type table{};
+			for (unsigned int i = 0; i < size; ++i) {
+				table.value[i].max_quotient =
+					std::numeric_limits<UInt>::max() / compute_power(UInt(5), i);
+				table.value[i].mod_inv =
+					compute_power(compute_modular_inverse_of_5<UInt>(), i);
+			}
 
-			return (x * mod_inv) <= max_quotient;
+			return table;
+		}
+		template <class UInt>
+		struct divisibility_test_table_holder {
+			static constexpr auto table = generate_divisibility_test_table<UInt>();
+		};
+		template <class UInt>
+		constexpr bool divisible_by_power_of_5(UInt x, unsigned int exp) noexcept {
+			assert(exp < divisibility_test_table_holder<UInt>::table.size);
+			auto const& entry = divisibility_test_table_holder<UInt>::table.value[exp];
+			return (x * entry.mod_inv) <= entry.max_quotient;
 		}
 		template <unsigned int exp, class UInt>
 		constexpr UInt divide_by_power_of_5_assuming_divisibility(UInt x) noexcept {
-			constexpr auto mod_inv = compute_power(compute_modular_inverse_of_5<UInt>(), exp);
-			return x * mod_inv;
+			static_assert(exp < divisibility_test_table_holder<UInt>::table.size);
+			auto const& entry = divisibility_test_table_holder<UInt>::table.value[exp];
+			return x * entry.mod_inv;
 		}
+		
 
 
 		////////////////////////////////////////////////////////////////////////////////////////
@@ -1820,37 +1847,79 @@ namespace jkj {
 					zf_vs_deltaf = zf_vs_deltaf_t::zf_larger;
 				}
 				
-				// Perform binary search
-				if constexpr (sizeof(Float) == 4) {
+				// Perform decreasing search
+				{
 					// This procedure strictly depends on our specific choice of these parameters:
-					static_assert(min_kappa == 0 && max_kappa == 9 && initial_kappa == 2);
+					static_assert(initial_kappa - min_kappa <= 2);
 
-					decreasing_search<1, IntervalTypeProvider::tag>(ret_value, interval_type, zf_vs_deltaf,
-						exponent, minus_k, minus_beta, significand, r, deltai, epsiloni, cache);
+					constexpr unsigned int lambda = 1;
+					// We already know r < 10^initial_kappa < 2^32
+					auto const quotient = std::uint32_t(r) / std::uint32_t(power_of_10<initial_kappa - lambda>);
+					auto const new_r = std::uint32_t(r) % std::uint32_t(power_of_10<initial_kappa - lambda>);
+
+					// Check if the remainder is still greater than or equal to the delta
+					// remainder should be strictly greater if the left boundary is contained
+
+					if (new_r < deltai) {
+						goto decrease_kappa_by_1_label;
+					}
+					else if (deltai == new_r) {
+						switch (zf_vs_deltaf) {
+						case zf_vs_deltaf_t::zf_smaller:
+							goto decrease_kappa_by_1_label;
+
+						case zf_vs_deltaf_t::not_compared_yet:
+							if (is_zf_smaller_than_deltaf<IntervalTypeProvider::tag>(significand,
+								minus_beta, cache, interval_type, exponent, minus_k))
+							{
+								zf_vs_deltaf = zf_vs_deltaf_t::zf_smaller;
+								goto decrease_kappa_by_1_label;
+							}
+							zf_vs_deltaf = zf_vs_deltaf_t::zf_larger;
+							break;
+
+						case zf_vs_deltaf_t::zf_larger:
+							// Do nothing; just to silence the warning
+							break;
+						}
+					}
+
+					// Decrease kappa by 1 + lambda (lambda = 1)
+					if constexpr (initial_kappa == 2) {
+						// kappa = 0
+						ret_value.significand = zi;
+						r = 0;
+					}
+					else {
+						static_assert(initial_kappa == 3);
+						// kappa = 1
+						ret_value.significand *= 100;
+						ret_value.significand += 10 * quotient + (std::uint32_t(new_r) / 10);
+						r = (std::uint32_t(new_r) % 10) * 10;
+					}
+					ret_value.exponent -= 2;
+					deltai *= std::uint32_t(power_of_10<lambda>);
+					epsiloni *= std::uint32_t(power_of_10<lambda>);
+
+					divisor = power_of_10<initial_kappa - 1>;
+					goto boundary_adjustment_and_return_label;
+
+				decrease_kappa_by_1_label:
+					// Decrease kappa by 1
+					ret_value.significand *= 10;
+					ret_value.significand += quotient;
+					r = new_r;
+					--ret_value.exponent;
+
+					divisor = power_of_10<initial_kappa - 1>;
+					goto boundary_adjustment_and_return_label;
 				}
-				else {
-					// This procedure strictly depends on our specific choice of these parameters:
-					static_assert(min_kappa == 1 && max_kappa == 18 && initial_kappa == 3);
-
-					decreasing_search<1, IntervalTypeProvider::tag>(ret_value, interval_type, zf_vs_deltaf,
-						exponent, minus_k, minus_beta, significand, r, deltai, epsiloni, cache);
-				}
-
-				// Decrease kappa by 1
-				ret_value.significand *= 10;
-				ret_value.significand += std::uint32_t(r) / std::uint32_t(power_of_10<initial_kappa - 1>);
-				r = std::uint32_t(r) % std::uint32_t(power_of_10<initial_kappa - 1>);
-				--ret_value.exponent;
-
-				divisor = power_of_10<initial_kappa - 1>;
-
-				goto boundary_adjustment_and_return_label;
 
 			increasing_search_label:
 				// Perform binary search
 				if constexpr (sizeof(Float) == 4) {
 					// This procedure strictly depends on our specific choice of these parameters:
-					static_assert(min_kappa == 0 && max_kappa == 9 && initial_kappa == 2);
+					static_assert(max_kappa - initial_kappa < 8);
 
 					increasing_search<4, IntervalTypeProvider::tag>(ret_value, interval_type, zf_vs_deltaf,
 						exponent, minus_k, minus_beta, significand, r, divisor, deltai, cache);
@@ -1861,7 +1930,7 @@ namespace jkj {
 				}
 				else {
 					// This procedure strictly depends on our specific choice of these parameters:
-					static_assert(min_kappa == 1 && max_kappa == 18 && initial_kappa == 3);
+					static_assert(max_kappa - initial_kappa < 16);
 
 					increasing_search<8, IntervalTypeProvider::tag>(ret_value, interval_type, zf_vs_deltaf,
 						exponent, minus_k, minus_beta, significand, r, divisor, deltai, cache);
@@ -1881,7 +1950,7 @@ namespace jkj {
 			boundary_adjustment_and_return_label:
 				// If right endpoint is not included, we should check if z mod 10^kappa = 0
 				if (!interval_type.include_right_endpoint() && r == 0) {
-					static constexpr integer_check_case_id case_id =
+					constexpr integer_check_case_id case_id =
 						IntervalTypeProvider::tag == grisu_exact_rounding_modes::to_nearest_tag ?
 						integer_check_case_id::fc_pm_2_to_the_q_mp_m2_generic :
 						integer_check_case_id::other;
@@ -1972,12 +2041,10 @@ namespace jkj {
 					IntervalTypeProvider::tag ==
 					grisu_exact_rounding_modes::to_nearest_tag)
 				{
-					// This procedure strictly depends on our specific choice of these parameters:
-					static_assert(
-						(sizeof(Float) == 4 && min_kappa == 0 && max_kappa == 9) ||
-						(sizeof(Float) == 8 && min_kappa == 1 && max_kappa == 18));
-
 					if constexpr (sizeof(Float) == 4) {
+						// This procedure strictly depends on our specific choice of these parameters:
+						static_assert(min_kappa == 0);
+
 						// Should treat the case kappa == 0 separately
 						if (ret_value.exponent == minus_k) {
 							// (floor(2y) + 1) / 2 for tie-to-up, ceil(2y) / 2 for tie-to-down
@@ -2031,6 +2098,10 @@ namespace jkj {
 
 							return ret_value;
 						}
+					}
+					else {
+						// This procedure strictly depends on our specific choice of these parameters:
+						static_assert(min_kappa > 0);
 					}
 
 					// Distribution of the quotient with uniform random data:
@@ -2222,8 +2293,8 @@ namespace jkj {
 			static std::uint32_t compute_delta([[maybe_unused]] bool is_edge_case,
 				cache_entry_type const& cache, int minus_beta) noexcept
 			{
-				static constexpr auto q_mp_m1 = extended_precision - precision - 1;
-				static constexpr auto intermediate_precision =
+				constexpr auto q_mp_m1 = extended_precision - precision - 1;
+				constexpr auto intermediate_precision =
 					sizeof(Float) == 4 ? cache_precision : extended_precision;
 				using intermediate_type = std::conditional_t<sizeof(Float) == 4,
 					cache_entry_type, extended_significand_type>;
@@ -2296,73 +2367,11 @@ namespace jkj {
 						return true;
 					}
 					// For k < 0
-					else if (exponent <= integer_check_exponent_upper_bound_for_p_p2) {
-						// For IEEE-754 binary32
-						if constexpr (sizeof(Float) == 4) {
-							// Fully table-based approach
-							assert(1 <= minus_k && minus_k <= 10);
-							switch (minus_k) {
-							case 1:
-								return divisible_by_power_of_5<1>(f);
-							case 2:
-								return divisible_by_power_of_5<2>(f);
-							case 3:
-								return divisible_by_power_of_5<3>(f);
-							case 4:
-								return divisible_by_power_of_5<4>(f);
-							case 5:
-								return divisible_by_power_of_5<5>(f);
-							case 6:
-								return divisible_by_power_of_5<6>(f);
-							case 7:
-								return divisible_by_power_of_5<7>(f);
-							case 8:
-								return divisible_by_power_of_5<8>(f);
-							case 9:
-								return divisible_by_power_of_5<9>(f);
-							default:	// case 10:
-								return divisible_by_power_of_5<10>(f);
-							}
-						}
-						// For IEEE-754 binary64
-						else {
-							// Cut into two parts and then appply the table-based approach
-							assert(1 <= minus_k && minus_k <= 23);
-							if (minus_k >= 12) {
-								if (divisible_by_power_of_5<12>(f)) {
-									f = divide_by_power_of_5_assuming_divisibility<12>(f);
-									minus_k -= 12;
-								}
-								else {
-									return false;
-								}
-							}
-							assert(0 <= minus_k && minus_k <= 11);
-							switch (minus_k) {
-							case 1:
-								return divisible_by_power_of_5<1>(f);
-							case 2:
-								return divisible_by_power_of_5<2>(f);
-							case 3:
-								return divisible_by_power_of_5<3>(f);
-							case 4:
-								return divisible_by_power_of_5<4>(f);
-							case 5:
-								return divisible_by_power_of_5<5>(f);
-							case 6:
-								return divisible_by_power_of_5<6>(f);
-							case 7:
-								return divisible_by_power_of_5<7>(f);
-							case 8:
-								return divisible_by_power_of_5<8>(f);
-							case 9:
-								return divisible_by_power_of_5<9>(f);
-							case 10:
-								return divisible_by_power_of_5<10>(f);
-							default:	// case 11:
-								return divisible_by_power_of_5<11>(f);
-							}
-						}
+					else if (exponent <= integer_check_exponent_upper_bound_for_p_p2)
+					{
+						assert((sizeof(Float) == 4 && 1 <= minus_k && minus_k <= 10) ||
+							(sizeof(Float) == 8 && 1 <= minus_k && minus_k <= 23));
+						return divisible_by_power_of_5(f, minus_k);
 					}
 					else {
 						return false;
@@ -2402,74 +2411,9 @@ namespace jkj {
 					}
 					// Exponent for 5 is positive
 					else if (exponent <= integer_check_exponent_upper_bound_for_p_p1) {
-						// For IEEE-754 binary32
-						if constexpr (sizeof(Float) == 4) {
-							// Fully table-based approach
-							assert(1 <= minus_k && minus_k <= 10);
-							switch (minus_k) {
-							case 1:
-								return divisible_by_power_of_5<1>(f);
-							case 2:
-								return divisible_by_power_of_5<2>(f);
-							case 3:
-								return divisible_by_power_of_5<3>(f);
-							case 4:
-								return divisible_by_power_of_5<4>(f);
-							case 5:
-								return divisible_by_power_of_5<5>(f);
-							case 6:
-								return divisible_by_power_of_5<6>(f);
-							case 7:
-								return divisible_by_power_of_5<7>(f);
-							case 8:
-								return divisible_by_power_of_5<8>(f);
-							case 9:
-								return divisible_by_power_of_5<9>(f);
-							default:	// case 10:
-								return divisible_by_power_of_5<10>(f);
-							}
-						}
-						// For IEEE-754 binary64
-						else {
-							// Cut into two parts and then appply the table-based approach
-							assert(1 <= minus_k && minus_k <= 22);
-							if (minus_k >= 11) {
-								if (divisible_by_power_of_5<11>(f)) {
-									f = divide_by_power_of_5_assuming_divisibility<11>(f);
-									minus_k -= 11;
-								}
-								else {
-									return false;
-								}
-							}
-							assert(0 <= minus_k && minus_k <= 11);
-							switch (minus_k) {
-							case 0:
-								return true;
-							case 1:
-								return divisible_by_power_of_5<1>(f);
-							case 2:
-								return divisible_by_power_of_5<2>(f);
-							case 3:
-								return divisible_by_power_of_5<3>(f);
-							case 4:
-								return divisible_by_power_of_5<4>(f);
-							case 5:
-								return divisible_by_power_of_5<5>(f);
-							case 6:
-								return divisible_by_power_of_5<6>(f);
-							case 7:
-								return divisible_by_power_of_5<7>(f);
-							case 8:
-								return divisible_by_power_of_5<8>(f);
-							case 9:
-								return divisible_by_power_of_5<9>(f);
-							case 10:
-								return divisible_by_power_of_5<10>(f);
-							default:	// case 11:
-								return divisible_by_power_of_5<11>(f);
-							}
-						}
+						assert((sizeof(Float) == 4 && 1 <= minus_k && minus_k <= 10) ||
+							(sizeof(Float) == 8 && 1 <= minus_k && minus_k <= 22));
+						return divisible_by_power_of_5(f, minus_k);
 					}
 					else {
 						return false;
@@ -2632,64 +2576,6 @@ namespace jkj {
 				r = new_r;
 				divisor *= power_of_10<lambda>;
 				return true;
-			};
-
-			// Perform binary search to find kappa downward
-			// Returns true if kappa - lambda is a possible candidate
-			template <extended_significand_type lambda,
-				grisu_exact_rounding_modes::tag_t tag,
-				bool is_signed, class IntervalType
-			>
-			static bool decreasing_search(
-				fp_t<Float, is_signed>& ret_value,
-				IntervalType& interval_type,
-				zf_vs_deltaf_t& zf_vs_deltaf,
-				int exponent, int minus_k, int minus_beta,
-				extended_significand_type fc,
-				extended_significand_type& r,
-				std::uint32_t& deltai,
-				std::uint32_t& epsiloni,
-				cache_entry_type const& cache) noexcept
-			{
-				// We already know r < 10^initial_kappa < 2^32
-				auto const quotient = std::uint32_t(r) / std::uint32_t(power_of_10<initial_kappa - lambda>);
-				auto const new_r = std::uint32_t(r) % std::uint32_t(power_of_10<initial_kappa - lambda>);
-
-				// Check if the remainder is still greater than or equal to the delta
-				// remainder should be strictly greater if the left boundary is contained
-
-				if (new_r < deltai) {
-					return true;
-				}
-				else if (deltai == new_r) {
-					switch (zf_vs_deltaf) {
-					case zf_vs_deltaf_t::zf_smaller:
-						return true;
-
-					case zf_vs_deltaf_t::not_compared_yet:
-						if (is_zf_smaller_than_deltaf<tag>(fc,
-							minus_beta, cache, interval_type, exponent, minus_k))
-						{
-							zf_vs_deltaf = zf_vs_deltaf_t::zf_smaller;
-							return true;
-						}
-						zf_vs_deltaf = zf_vs_deltaf_t::zf_larger;
-						break;
-
-					case zf_vs_deltaf_t::zf_larger:
-						// Do nothing; just to silence the warning
-						break;
-					}
-				}
-
-				// Decrease kappa by lambda
-				r = new_r * power_of_10<lambda>;
-				deltai *= std::uint32_t(power_of_10<lambda>);
-				epsiloni *= std::uint32_t(power_of_10<lambda>);
-				ret_value.significand *= power_of_10<lambda>;
-				ret_value.significand += quotient;
-				ret_value.exponent -= lambda;
-				return false;
 			}
 		};
 	}
