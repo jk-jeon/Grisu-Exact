@@ -98,5 +98,8 @@
       <Filter>benchmark</Filter>
     </ClCompile>
     <ClCompile Include="..\tests\main.cpp" />
+    <ClCompile Include="..\tests\verify_correct_rounding_bound.cpp">
+      <Filter>tests</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

@@ -33,6 +33,10 @@ extern void generate_cache();
 //#define VERIFY_DELTA_COMPUTATION
 extern void verify_delta_computation();
 
+// Check if the bound on the steps in correct rounding computation
+//#define VERIFY_CORRECT_ROUNDING_BOUND
+extern void verify_correct_rounding_bound();
+
 // Generate random float's and test Grisu-Exact's output
 //#define UNIFORM_RANDOM_TEST_FLOAT
 static std::size_t number_of_uniform_random_tests_float = 10000000;
@@ -69,7 +73,7 @@ extern void misc_test();
 #define BENCHMARK_TEST_FLOAT
 static std::size_t number_of_uniform_benchmark_samples_float = 1000000;
 static std::size_t number_of_digits_benchmark_samples_per_digits_float = 100000;
-static std::size_t number_of_benchmark_iterations_float = 1000;
+static std::size_t number_of_benchmark_iterations_float = 100;
 extern void benchmark_test_float(std::size_t number_of_uniform_samples,
 	std::size_t number_of_digits_samples_per_digits, std::size_t number_of_iterations);
 
@@ -77,7 +81,7 @@ extern void benchmark_test_float(std::size_t number_of_uniform_samples,
 #define BENCHMARK_TEST_DOUBLE
 static std::size_t number_of_uniform_benchmark_samples_double = 1000000;
 static std::size_t number_of_digits_benchmark_samples_per_digits_double = 100000;
-static std::size_t number_of_benchmark_iterations_double = 1000;
+static std::size_t number_of_benchmark_iterations_double = 100;
 extern void benchmark_test_double(std::size_t number_of_uniform_samples,
 	std::size_t number_of_digits_samples_per_digits, std::size_t number_of_iterations);
 
@@ -97,6 +101,10 @@ int main()
 
 #ifdef VERIFY_DELTA_COMPUTATION
 	verify_delta_computation();
+#endif
+
+#ifdef VERIFY_CORRECT_ROUNDING_BOUND
+	verify_correct_rounding_bound();
 #endif
 
 #ifdef UNIFORM_RANDOM_TEST_FLOAT

@@ -2130,26 +2130,12 @@ namespace jkj {
 								if (divisor32 <= epsiloni) {
 									epsiloni -= divisor32;
 
-									// Is the quotient at least 7?
-									if (2 * divisor32 <= epsiloni) {
-										epsiloni -= 2 * divisor32;
-
-										// Is the quotient 9?
-										if (2 * divisor32 <= epsiloni) {
-											epsiloni -= 2 * divisor32;
-											steps = 9;
-										}
-										// Is the quotient 8?
-										else if (divisor32 <= epsiloni) {
-											epsiloni -= divisor32;
-											steps = 8;
-										}
-										// Is the quotient 7?
-										else {
-											steps = 7;
-										}
+									// For binary32, this implies that the quotient should be 5
+									if constexpr (sizeof(Float) == 4) {
+										steps = 5;
 									}
-									// Is the quotient either 5 or 6?
+									// For binary64, there are inputs such that
+									// the quotient is 6, though extremely rare
 									else {
 										// Is the quotient 6?
 										if (divisor32 <= epsiloni) {

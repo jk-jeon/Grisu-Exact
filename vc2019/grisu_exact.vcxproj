@@ -47,6 +47,7 @@
     <ClCompile Include="..\tests\uniform_random_perf_test.cpp" />
     <ClCompile Include="..\tests\uniform_random_test.cpp" />
     <ClCompile Include="..\tests\verify_cache_length.cpp" />
+    <ClCompile Include="..\tests\verify_correct_rounding_bound.cpp" />
     <ClCompile Include="..\tests\verify_delta_computation.cpp" />
     <ClCompile Include="..\tests\verify_log_computation.cpp" />
   </ItemGroup>
