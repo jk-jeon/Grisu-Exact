@@ -25,7 +25,7 @@
 #include <cstdint>		// std::uint32_t, etc.
 #include <cstring>		// std::memcpy; not needed if C++20 std::bit_cast is used instead
 #include <limits>
-#include <type_traits>	// std::remove_cvref_t, etc
+#include <type_traits>	// std::remove_cv, etc
 
 #if defined(_MSC_VER)
 #include <intrin.h>
@@ -1316,8 +1316,8 @@ namespace jkj {
 			fp_t<Float, return_sign> delegate(bit_representation_t<Float> br,
 				IntervalTypeProvider&&) const
 			{
-				return grisu_exact_detail::grisu_exact_impl<Float>::template compute<
-					return_sign, std::remove_cvref_t<IntervalTypeProvider>, do_not_care>(br);
+				return grisu_exact_detail::grisu_exact_impl<Float>::template compute<return_sign,
+					std::remove_cv_t<std::remove_reference_t<IntervalTypeProvider>>, do_not_care>(br);
 			}
 		};
 
@@ -1328,8 +1328,8 @@ namespace jkj {
 			fp_t<Float, return_sign> delegate(bit_representation_t<Float> br,
 				IntervalTypeProvider&&) const
 			{
-				return grisu_exact_detail::grisu_exact_impl<Float>::template compute<
-					return_sign, std::remove_cvref_t<IntervalTypeProvider>, tie_to_even>(br);
+				return grisu_exact_detail::grisu_exact_impl<Float>::template compute<return_sign,
+					std::remove_cv_t<std::remove_reference_t<IntervalTypeProvider>>, tie_to_even>(br);
 			}
 		};
 
@@ -1340,8 +1340,8 @@ namespace jkj {
 			fp_t<Float, return_sign> delegate(bit_representation_t<Float> br,
 				IntervalTypeProvider&&) const
 			{
-				return grisu_exact_detail::grisu_exact_impl<Float>::template compute<
-					return_sign, std::remove_cvref_t<IntervalTypeProvider>, tie_to_odd>(br);
+				return grisu_exact_detail::grisu_exact_impl<Float>::template compute<return_sign,
+					std::remove_cv_t<std::remove_reference_t<IntervalTypeProvider>>, tie_to_odd>(br);
 			}
 		};
 
@@ -1352,8 +1352,8 @@ namespace jkj {
 			fp_t<Float, return_sign> delegate(bit_representation_t<Float> br,
 				IntervalTypeProvider&&) const
 			{
-				return grisu_exact_detail::grisu_exact_impl<Float>::template compute<
-					return_sign, std::remove_cvref_t<IntervalTypeProvider>, tie_to_up>(br);
+				return grisu_exact_detail::grisu_exact_impl<Float>::template compute<return_sign,
+					std::remove_cv_t<std::remove_reference_t<IntervalTypeProvider>>, tie_to_up>(br);
 			}
 		};
 
@@ -1364,8 +1364,8 @@ namespace jkj {
 			fp_t<Float, return_sign> delegate(bit_representation_t<Float> br,
 				IntervalTypeProvider&&) const
 			{
-				return grisu_exact_detail::grisu_exact_impl<Float>::template compute<
-					return_sign, std::remove_cvref_t<IntervalTypeProvider>, tie_to_down>(br);
+				return grisu_exact_detail::grisu_exact_impl<Float>::template compute<return_sign,
+					std::remove_cv_t<std::remove_reference_t<IntervalTypeProvider>>, tie_to_down>(br);
 			}
 		};
 	}
