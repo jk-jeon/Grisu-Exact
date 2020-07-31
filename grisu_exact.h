@@ -268,7 +268,12 @@ namespace jkj {
 		////////////////////////////////////////////////////////////////////////////////////////
 
 		// This function is accurate if e is in the range [-1650,1650]
+		template <bool should_assert = true>
 		constexpr int floor_log10_pow2(int e) noexcept {
+			if constexpr (should_assert) {
+				assert(e >= -1650 && e <= 1650);
+			}
+
 			// The next 12 digits are 0xd27
 			constexpr std::int32_t log10_2_up_to_20 = 0x4d104;
 
@@ -280,7 +285,12 @@ namespace jkj {
 		}
 
 		// This function is accurate if e is in the range [-642,642]
+		template <bool should_assert = true>
 		constexpr int floor_log2_pow10(int e) noexcept {
+			if constexpr (should_assert) {
+				assert(e >= -642 && e <= 642);
+			}
+
 			// The next 12 digits are 0x12f
 			constexpr std::int32_t log2_5_over_4_up_to_20 = 0x35269e;
 
@@ -295,7 +305,12 @@ namespace jkj {
 		// This function is accurate if e is in the range [-65536,+65536]
 		// This function is only executed at compile-time,
 		// and never executed at runtime.
+		template <bool should_assert = true>
 		constexpr int floor_log5_pow2(int e) noexcept {
+			if constexpr (should_assert) {
+				assert(e >= -65536 && e <= 65536);
+			}
+
 			// The next 32 digits are 0x143dcb94
 			constexpr std::uint32_t log5_2_up_to_32 = 0x6e40d1a4;
 

@@ -46,14 +46,14 @@ void verify_log_computation()
 				++true_value;
 			}
 
-			auto computed = jkj::grisu_exact_detail::floor_log10_pow2(e);
+			auto computed = jkj::grisu_exact_detail::floor_log10_pow2<false>(e);
 			if (computed != true_value) {
 				std::cout << "floor_log10_pow2: mismatch! [e = " << e
 					<< ", true_value = " << true_value
 					<< ", computed = " << computed << "]\n";
 				succeeded = false;
 			}
-			computed = jkj::grisu_exact_detail::floor_log10_pow2(-e);
+			computed = jkj::grisu_exact_detail::floor_log10_pow2<false>(-e);
 			true_value = -true_value - 1;	// log10(2^e) is never an integer
 			if (computed != true_value) {
 				std::cout << "floor_log10_pow2: mismatch! [e = " << -e
@@ -89,14 +89,14 @@ void verify_log_computation()
 			auto true_value = int(number.leading_one_pos.element_pos * decltype(number)::element_number_of_bits
 				+ number.leading_one_pos.bit_pos - 1);
 
-			auto computed = jkj::grisu_exact_detail::floor_log2_pow10(e);
+			auto computed = jkj::grisu_exact_detail::floor_log2_pow10<false>(e);
 			if (computed != true_value) {
 				std::cout << "floor_log2_pow10: mismatch! [e = " << e
 					<< ", true_value = " << true_value
 					<< ", computed = " << computed << "]\n";
 				succeeded = false;
 			}
-			computed = jkj::grisu_exact_detail::floor_log2_pow10(-e);
+			computed = jkj::grisu_exact_detail::floor_log2_pow10<false>(-e);
 			true_value = -true_value - 1;	// log2(10^e) is never an integer
 			if (computed != true_value) {
 				std::cout << "floor_log2_pow10: mismatch! [e = " << -e
@@ -132,14 +132,14 @@ void verify_log_computation()
 				++true_value;
 			}
 
-			auto computed = jkj::grisu_exact_detail::floor_log5_pow2(e);
+			auto computed = jkj::grisu_exact_detail::floor_log5_pow2<false>(e);
 			if (computed != true_value) {
 				std::cout << "floor_log5_pow2: mismatch! [e = " << e
 					<< ", true_value = " << true_value
 					<< ", computed = " << computed << "]\n";
 				succeeded = false;
 			}
-			computed = jkj::grisu_exact_detail::floor_log5_pow2(-e);
+			computed = jkj::grisu_exact_detail::floor_log5_pow2<false>(-e);
 			true_value = -true_value - 1;	// log10(2^e) is never an integer
 			if (computed != true_value) {
 				std::cout << "floor_log5_pow2: mismatch! [e = " << -e
