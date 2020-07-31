@@ -73,9 +73,9 @@ void verify_log_computation()
 	// Verify floor_log2_pow10
 	maximum_valid_exp = 0;
 	succeeded = true;
-	for (int e = 1; e <= 4096; ++e) {
-		// Take lower 20 bits of 0x5269e * e
-		auto lower = (std::int32_t(e) * 0x5269e) & 0xfffff;
+	for (int e = 1; e <= 1024; ++e) {
+		// Take lower 20 bits of 0x35269e * e
+		auto lower = (std::int32_t(e) * 0x35269e) & 0xfffff;
 
 		// Verify the lower bits can never overflow
 		if (lower + 0x130 >= 0x100000) {

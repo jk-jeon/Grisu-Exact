@@ -279,13 +279,13 @@ namespace jkj {
 				>> 20);
 		}
 
-		// This function is accurate if e is in the range [-4003,4003]
+		// This function is accurate if e is in the range [-642,642]
 		constexpr int floor_log2_pow10(int e) noexcept {
 			// The next 12 digits are 0x12f
-			constexpr std::int32_t log2_5_over_4_up_to_20 = 0x5269e;
+			constexpr std::int32_t log2_5_over_4_up_to_20 = 0x35269e;
 
-			return 3 * e + int(
-				// Calculate 0x0.5269e * exp * 2^20
+			return int(
+				// Calculate 0x3.5269e * exp * 2^20
 				(std::int32_t(e) * log2_5_over_4_up_to_20)
 				// Perform arithmetic-shift
 				>> 20);
