@@ -21,128 +21,112 @@
 
 namespace jkj {
 	namespace grisu_exact_detail {
-		// Min-Max Euclid
-		// Precondition: a and b are coprime; otherwise, the result is incorrect
+		// Min-Max Euclid algorithm
+		// Precondition: a, b, N are positive integers
 		template <std::size_t array_size>
-		std::pair<bigint_impl<array_size>, bigint_impl<array_size>>
+		struct minmax_euclid_return {
+			bigint_impl<array_size> min;
+			bigint_impl<array_size> max;
+			std::uint64_t argmin;
+			std::uint64_t argmax;
+		};
+		template <std::size_t array_size>
+		minmax_euclid_return<array_size>
 			minmax_euclid(bigint_impl<array_size> const& a, bigint_impl<array_size> const& b, std::uint64_t N)
 		{
 			using bigint_t = bigint_impl<array_size>;
 
-			std::pair<bigint_t, bigint_t> ret;
-			auto& ret_min = ret.first;
-			auto& ret_max = ret.second;
-			ret_max = b;
+			minmax_euclid_return<array_size> ret;
+			ret.max = b;
 
-			// a * si - b * t = ai
-			// b * v - a * uj = bj
-			std::vector<bigint_t> ai{ a };
-			std::vector<bigint_t> bj{ b };
-			std::vector<std::uint64_t> si{ 1 };
-			std::vector<std::uint64_t> uj{ 0 };
-			bigint_t t{ 0 };
-			bigint_t v{ 1 };
+			bigint_t ai = a;
+			bigint_t bi = b;
+			std::uint64_t si = 1;
+			std::uint64_t ui = 0;
 
 			while (true) {
-				if (bj.back() >= ai.back()) {
-					auto new_bi = bj.back();
-					auto q = new_bi.long_division(ai.back());
-					auto new_ui = q * si.back();
-					new_ui += uj.back();
+				// Update ui and bi
+				auto new_b = bi;
+				auto qi = new_b.long_division(ai);
+				if (new_b == 0) {
+					assert(qi > 0);
+					--qi;
+					new_b = ai;
+				}
+				auto new_u = qi * si;
+				new_u += ui;
 
-					if (new_ui >= N) {
-						ret_min = ai.back();
-						ret_max -= bj.back();
+				if (new_u > N) {
+					// Find 0 < k < qi such that ui + k*si <= N < ui + (k+1)*si
+					auto k = (N - ui) / si;
 
-						auto remaining = N - uj.back();
-						auto i = ai.size();
-						while (remaining > 0) {
-							assert(i != 0);
-							--i;
+					// si <= N < new_u
+					ret.min = ai;
+					ret.argmin = si;
+					ret.max -= bi;
+					ret.max += k * ai;
+					ret.argmax = ui + k * si;
 
-							auto qr = remaining / si[i];
-							remaining %= si[i];
+					break;
+				}
+				assert(new_u.leading_one_pos.element_pos == 0);
 
-							auto new_max_candidate = ai[i];
-							new_max_candidate *= qr;
-							new_max_candidate += ret_max;
+				// Update si and ai
+				auto new_a = ai;
+				auto pi = new_a.long_division(new_b);
+				if (new_a == 0) {
+					assert(pi > 0);
+					--pi;
+					new_a = new_b;
+				}
+				auto new_s = pi * new_u;
+				new_s += si;
 
-							if (new_max_candidate < b)
-								ret_max = new_max_candidate;
-							else {
-								auto margin = b;
-								margin -= ret_max;
-								q = margin.long_division(ai[i]);
-								ret_max += q * ai[i];
+				if (new_s > N) {
+					// Find 0 < k < pi such that si + k*u(i+1) <= N < si + (k+1)*u(i+1)
+					auto k = (N - si) / new_u.elements[0];
 
-								return ret;
-							}
-						}
-						return ret;
+					// new_u <= N < new_s
+					ret.min = ai;
+					ret.min -= k * new_b;
+					ret.argmin = si + k * new_u.elements[0];
+					ret.max -= new_b;
+					ret.argmax = new_u.elements[0];
+
+					break;
+				}
+				assert(new_s.leading_one_pos.element_pos == 0);
+
+				if (new_b == bi && new_a == ai) {
+					// Reached to the gcd
+					assert(ui == new_u.elements[0]);
+					assert(si == new_s.elements[0]);
+
+					ret.max -= new_b;
+					ret.argmax = new_u.elements[0];
+
+					auto sum_idx = new_s;
+					sum_idx += new_u;
+					if (sum_idx > N) {
+						ret.min = new_a;
+						ret.argmin = new_s.elements[0];
+					}
+					else {
+						assert(sum_idx.leading_one_pos.element_pos == 0);
+						ret.min = 0;
+						ret.argmin = sum_idx.elements[0];
 					}
 
-					bj.push_back(new_bi);
-					assert(new_ui.leading_one_pos.element_pos == 0);
-					uj.push_back(new_ui.elements[0]);
-					v += q * t;
+					break;
 				}
 
-				if (bj.back() == 0) {
-					ret_min = 0;
-					ret_max -= 1;
-					return ret;
-				}
-
-				if (ai.back() >= bj.back()) {
-					auto new_ai = ai.back();
-					auto q = new_ai.long_division(bj.back());
-					auto new_si = q * uj.back();
-					new_si += si.back();
-
-					if (new_si >= N) {
-						ret_min = ai.back();
-						ret_max -= bj.back();
-
-						auto remaining = N - si.back();
-						auto j = bj.size();
-						while (remaining > 0) {
-							assert(j != 0);
-							--j;
-
-							if (uj[j] != 0) {
-								auto qr = remaining / uj[j];
-								remaining %= uj[j];
-
-								auto new_min_diff = bj[j];
-								new_min_diff *= qr;
-
-								if (new_min_diff < ret_min)
-									ret_min -= new_min_diff;
-								else {
-									ret_min.long_division(bj[j]);
-									return ret;
-								}
-							}
-							else {
-								ret_min.long_division(bj[j]);
-								return ret;
-							}
-						}
-						return ret;
-					}
-
-					ai.push_back(new_ai);
-					assert(new_si.leading_one_pos.element_pos == 0);
-					si.push_back(new_si.elements[0]);
-					t += q * v;
-				}
-
-				if (ai.back() == 0) {
-					ret_min = 0;
-					ret_max -= 1;
-					return ret;
-				}
+				bi = new_b;
+				ui = new_u.elements[0];
+				ai = new_a;
+				si = new_s.elements[0];
 			}
+
+			return ret;
 		}
 
 		template <class Float>
@@ -205,9 +189,11 @@ namespace jkj {
 					prev_k = k;
 				}
 
-				auto [mod_min, mod_max] = minmax_euclid(
+				auto mod_minmax = minmax_euclid(
 					bigint_type::power_of_2(further_info<Float>::q_mp_m2 + e + k),
 					power_of_5, further_info<Float>::range);
+				auto& mod_min = mod_minmax.min;
+				auto& mod_max = mod_minmax.max;
 
 				auto divisor = power_of_5;
 				divisor -= mod_max;
@@ -220,9 +206,11 @@ namespace jkj {
 				auto required_bits = common_info<Float>::extended_precision +
 					e + floor_log2_pow10(k) + 1 + log2_res_p1;
 
-				std::tie(mod_min, mod_max) = minmax_euclid(
+				mod_minmax = minmax_euclid(
 					bigint_type::power_of_2(further_info<Float>::q_mp_m2 + e + k + 2),
 					power_of_5, further_info<Float>::range / 2);
+				mod_min = mod_minmax.min;
+				mod_max = mod_minmax.max;
 
 				divisor = power_of_5;
 				divisor -= mod_max;
@@ -288,10 +276,11 @@ namespace jkj {
 				int exp_of_2 = -e - k - int(further_info<Float>::q_mp_m2);
 
 				if (exp_of_2 > 0) {
-					auto [mod_min, mod_max] = minmax_euclid(
+					auto mod_minmax = minmax_euclid(
 						power_of_5,
 						bigint_type::power_of_2(exp_of_2),
 						further_info<Float>::range);
+					auto& mod_min = mod_minmax.min;
 
 					if (mod_min.leading_one_pos.bit_pos != 0) {
 						auto log2_res = mod_min.leading_one_pos.element_pos *
@@ -305,10 +294,11 @@ namespace jkj {
 
 				exp_of_2 -= 2;
 				if (exp_of_2 > 0) {
-					auto [mod_min, mod_max] = minmax_euclid(
+					auto mod_minmax = minmax_euclid(
 						power_of_5,
 						bigint_type::power_of_2(exp_of_2),
 						further_info<Float>::range / 2);
+					auto& mod_min = mod_minmax.min;
 
 					if (mod_min.leading_one_pos.bit_pos != 0) {
 						auto log2_res = mod_min.leading_one_pos.element_pos *

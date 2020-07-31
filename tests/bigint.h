@@ -469,6 +469,34 @@ namespace jkj {
 				return *this;
 			}
 
+			// Subtract one
+			// Precondition: *this should be nonzero
+			constexpr bigint_impl& operator--() & {
+				std::size_t idx = 0;
+				while (elements[idx] == 0) {
+					elements[idx] = element_type(-1);
+					++idx;
+					assert(idx <= leading_one_pos.element_pos);
+				}
+				--elements[idx];
+
+				// Find the new leading-1 position
+				if (elements[idx] == 0) {
+					if (idx == 0) {
+						leading_one_pos.bit_pos = 0;
+					}
+					else {
+						--leading_one_pos.element_pos;
+						leading_one_pos.bit_pos = element_number_of_bits;
+					}
+				}
+				else {
+					leading_one_pos.bit_pos = log2p1(elements[idx]);
+				}
+
+				return *this;
+			}
+
 			// Multiply a single element
 			bigint_impl& operator*=(element_type n) & {
 				element_type carry = 0;
