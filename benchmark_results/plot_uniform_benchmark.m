@@ -83,6 +83,9 @@ elseif bits==64
     xticks([0 uint64(2)^62 uint64(2)^63 3*uint64(2)^62 uint64(2)^64]);
     xticklabels({'$0$','$2^{62}$','$2^{63}$','$3\times2^{62}$','$2^{64}$'});
 end
+h = gca;
+h.XGrid = 'off';
+h.YGrid = 'on';
 set(gca,'TickLabelInterpreter', 'latex');
 set(gcf, 'Position', [100 100 1200 500]);
 orient(fig,'landscape');

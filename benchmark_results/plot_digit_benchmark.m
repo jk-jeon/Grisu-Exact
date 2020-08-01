@@ -67,6 +67,8 @@ xlabel('Number of digits');
 ylabel('Time (ns)');
 h = gca;
 h.XTick = 1:max_digits;
+h.XGrid = 'on';
+h.YGrid = 'on';
 set(gca,'TickLabelInterpreter', 'latex');
 set(gcf, 'Position', [100 100 1200 500]);
 orient(fig,'landscape');
