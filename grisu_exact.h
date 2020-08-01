@@ -1856,6 +1856,11 @@ namespace jkj {
 				}
 				
 				// Perform decreasing search
+				// In the paper, we calculate 10^(kappa0 - kappa) * r_(kappa - lambda) instead of
+				// r_(kappa-lambda), and 10^(kappa0 - kappa) * deltai instead of deltai, and
+				// 10^kappa0 instead of 10^kappa, so that the search procedure can be iterated.
+				// However, in this implementation we will not iterate decreasing search and
+				// the search will be performed only once. Hence, we do not need to do that.
 				{
 					// This procedure strictly depends on our specific choice of these parameters:
 					static_assert(initial_kappa - min_kappa <= 2);
@@ -1903,14 +1908,33 @@ namespace jkj {
 						// kappa = 1
 						ret_value.significand *= 100;
 						ret_value.significand += 10 * quotient + (std::uint32_t(new_r) / 10);
-						r = (std::uint32_t(new_r) % 10) * 10;
+						r = std::uint32_t(new_r) % 10;
 					}
 					ret_value.exponent -= 2;
-					deltai *= std::uint32_t(power_of_10<lambda>);
-					epsiloni *= std::uint32_t(power_of_10<lambda>);
+					divisor = power_of_10<initial_kappa - 2>;
 
-					divisor = power_of_10<initial_kappa - 1>;
-					goto boundary_adjustment_and_return_label;
+					// Since kappa is already the smallest possible value,
+					// we do not need to search for kappa'
+					// (But still need to get away from the boundary for certain cases)
+					if constexpr (CorrectRoundingSearch::tag !=
+						grisu_exact_correct_rounding::do_not_care_tag &&
+						IntervalTypeProvider::tag ==
+						grisu_exact_rounding_modes::to_nearest_tag)
+					{
+						// For binary32 case, kappa == 0 case requires a separate correct rounding search
+						if constexpr (min_kappa == 0)
+						{
+							goto correct_rounding_search_when_kappa_is_0_label;
+						}
+						else
+						{
+							goto correct_rounding_search_label;
+						}
+					}
+					else
+					{
+						goto boundary_adjustment_label;
+					}
 
 				decrease_kappa_by_1_label:
 					// Decrease kappa by 1
@@ -1920,7 +1944,7 @@ namespace jkj {
 					--ret_value.exponent;
 
 					divisor = power_of_10<initial_kappa - 1>;
-					goto boundary_adjustment_and_return_label;
+					goto boundary_adjustment_label;
 				}
 
 			increasing_search_label:
@@ -1955,7 +1979,7 @@ namespace jkj {
 				// Step 3: Dealing with the right endpoint (search for kappa')
 				//////////////////////////////////////////////////////////////////////
 
-			boundary_adjustment_and_return_label:
+			boundary_adjustment_label:
 				// If right endpoint is not included, we should check if z mod 10^kappa = 0
 				if (!interval_type.include_right_endpoint() && r == 0) {
 					constexpr integer_check_case_id case_id =
@@ -2013,14 +2037,28 @@ namespace jkj {
 						{
 							r = divisor;
 						}
+
+						// For binary32 case, kappa == 0 case requires a separate correct rounding search
+						if constexpr (CorrectRoundingSearch::tag !=
+							grisu_exact_correct_rounding::do_not_care_tag &&
+							IntervalTypeProvider::tag ==
+							grisu_exact_rounding_modes::to_nearest_tag &&
+							min_kappa == 0)
+						{
+							if (ret_value.exponent == minus_k) {
+								goto correct_rounding_search_when_kappa_is_0_label;
+							}
+						}
 					}
 				}
-
 				
 				//////////////////////////////////////////////////////////////////////
 				// Step 4: Correct rounding search
 				//////////////////////////////////////////////////////////////////////
 
+				// Just to silence "unused label" warnings
+				goto correct_rounding_search_label;
+			correct_rounding_search_label:
 				if constexpr (CorrectRoundingSearch::tag !=
 					grisu_exact_correct_rounding::do_not_care_tag &&
 					IntervalTypeProvider::tag ==
@@ -2049,79 +2087,19 @@ namespace jkj {
 					IntervalTypeProvider::tag ==
 					grisu_exact_rounding_modes::to_nearest_tag)
 				{
-					if constexpr (sizeof(Float) == 4) {
-						// This procedure strictly depends on our specific choice of these parameters:
-						static_assert(min_kappa == 0);
+					// Should treat the case kappa == 0 separately
+					assert(ret_value.exponent != minus_k);
 
-						// Should treat the case kappa == 0 separately
-						if (ret_value.exponent == minus_k) {
-							// (floor(2y) + 1) / 2 for tie-to-up, ceil(2y) / 2 for tie-to-down
-
-							// First, compute floor(2y)
-							auto const two_yi = compute_mul(significand, cache, minus_beta - 1);
-
-							if constexpr (CorrectRoundingSearch::tag ==
-								grisu_exact_correct_rounding::tie_to_even_tag ||
-								CorrectRoundingSearch::tag ==
-								grisu_exact_correct_rounding::tie_to_odd_tag)
-							{
-								// Compare round-up vs round-down
-								// round-up  : (two_yi + 1) / 2
-								// round-down: (two_yi + 1) / 2 if !is_prodict_integer, two_yi / 2 otherwise
-								// If they can differ, that is, if is_product_integer,
-								// then prefer even/odd
-								if (is_product_integer<integer_check_case_id::two_times_fc>(
-									significand, exponent, minus_k))
-								{
-									if constexpr (CorrectRoundingSearch::tag ==
-										grisu_exact_correct_rounding::tie_to_even_tag)
-									{
-										ret_value.significand = (two_yi / 2) % 2 == 1 ?
-											(two_yi + 1) / 2 : two_yi / 2;
-									}
-									else
-									{
-										ret_value.significand = (two_yi / 2) % 2 == 0 ?
-											(two_yi + 1) / 2 : two_yi / 2;
-									}
-								}
-								else {
-									ret_value.significand = (two_yi + 1) / 2;
-								}
-							}
-							else if constexpr (CorrectRoundingSearch::tag ==
-								grisu_exact_correct_rounding::tie_to_up_tag)
-							{
-								ret_value.significand = (two_yi + 1) / 2;
-							}
-							else {
-								if (!is_product_integer<integer_check_case_id::two_times_fc>(
-									significand, exponent, minus_k))
-								{
-									++two_yi;
-								}
-
-								ret_value.significand = two_yi / 2;
-							}
-
-							return ret_value;
-						}
-					}
-					else {
-						// This procedure strictly depends on our specific choice of these parameters:
-						static_assert(min_kappa > 0);
-					}
-
-					// Distribution of the quotient with uniform random data:
+					// Distribution of n' with uniformly random data:
 					// [binary32]
-					// 0: 48.0%   1: 32.9%   2:  5.7%   3:  8.7%   4:  3.9%
-					// 5:  0.9%   6:  0.0%   7:  0.0%   8:  0.0%   9:  0.0%
+					// -1: 48.0%   0: 32.9%   1:  5.7%   2:  8.7%
+					//  3:  3.9%   4:  0.9%
 					// [binary64]
-					// 0: 51.9%   1: 31.9%   2: 10.2%   3:  4.5%   4:  1.4%
-					// 5:  0.1%   6:  0.0%   7:  0.0%   8:  0.0%   9:  0.0%
+					// -1: 51.9%   0: 31.9%   1: 10.2%   2:  4.5% 
+					//  3:  1.4%   4:  0.1%   5:  0.0%
 					auto const displacement = (divisor / 2) + r;
 
-					// Is the quotient at least 1?
+					// n' + 1 >= 1?
 					if (displacement <= epsiloni) {
 						std::uint8_t steps;
 						epsiloni -= std::uint32_t(displacement);
@@ -2133,55 +2111,55 @@ namespace jkj {
 						// Hence, 2 * divisor can fit inside std::uint32_t.
 						auto const divisor32 = std::uint32_t(divisor);
 
-						// Is the quotient at least 2?
+						// n' + 1 >= 2?
 						if (divisor32 <= epsiloni) {
 							epsiloni -= divisor32;
 
-							// Is the quotient at least 4?
+							// n' + 1 >= 4?
 							if (2 * divisor32 <= epsiloni) {
 								epsiloni -= 2 * divisor32;
 
-								// Is the quotient at least 5?
+								// n' + 1 >= 5?
 								if (divisor32 <= epsiloni) {
 									epsiloni -= divisor32;
 
-									// For binary32, this implies that the quotient should be 5
+									// For binary32, this implies that n' should be 4
 									if constexpr (sizeof(Float) == 4) {
 										steps = 5;
 									}
 									// For binary64, there are inputs such that
-									// the quotient is 6, though extremely rare
+									// n' = 5, though extremely rare
 									else {
-										// Is the quotient 6?
+										// n' + 1 = 6?
 										if (divisor32 <= epsiloni) {
 											epsiloni -= divisor32;
 											steps = 6;
 										}
-										// Is the quotient 5?
+										// n' + 1 = 5
 										else {
 											steps = 5;
 										}
 									}
 								}
-								// Is the quotient 4?
+								// n' + 1 = 4
 								else {
 									steps = 4;
 								}
 							}
-							// Is the quotient either 2 or 3?
+							// n' + 1 = 2 or 3
 							else {
-								// Is the quotient 3?
+								// n' + 1 = 3?
 								if (divisor32 <= epsiloni) {
 									epsiloni -= divisor32;
 									steps = 3;
 								}
-								// Is the quotient 2?
+								// n' + 1 = 2
 								else {
 									steps = 2;
 								}
 							}
 						}
-						// Is the quotient 1?
+						// n' + 1 = 1
 						else {
 							steps = 1;
 						}
@@ -2269,6 +2247,67 @@ namespace jkj {
 					}
 				}
 
+				goto return_label;
+
+				// Just to silence "unused label" warnings
+				goto correct_rounding_search_when_kappa_is_0_label;
+			correct_rounding_search_when_kappa_is_0_label:
+				if constexpr (CorrectRoundingSearch::tag !=
+					grisu_exact_correct_rounding::do_not_care_tag &&
+					IntervalTypeProvider::tag ==
+					grisu_exact_rounding_modes::to_nearest_tag &&
+					min_kappa == 0)
+				{
+					// (floor(2y) + 1) / 2 for tie-to-up, ceil(2y) / 2 for tie-to-down
+					// First, compute floor(2y)
+					auto two_yi = compute_mul(significand, cache, minus_beta - 1);
+
+					if constexpr (CorrectRoundingSearch::tag ==
+						grisu_exact_correct_rounding::tie_to_even_tag ||
+						CorrectRoundingSearch::tag ==
+						grisu_exact_correct_rounding::tie_to_odd_tag)
+					{
+						// Compare round-up vs round-down
+						// round-up  : (two_yi + 1) / 2
+						// round-down: (two_yi + 1) / 2 if !is_prodict_integer, two_yi / 2 otherwise
+						// If they can differ, that is, if is_product_integer,
+						// then prefer even/odd
+						if (is_product_integer<integer_check_case_id::two_times_fc>(
+							significand, exponent, minus_k))
+						{
+							if constexpr (CorrectRoundingSearch::tag ==
+								grisu_exact_correct_rounding::tie_to_even_tag)
+							{
+								ret_value.significand = (two_yi / 2) % 2 == 1 ?
+									(two_yi + 1) / 2 : two_yi / 2;
+							}
+							else
+							{
+								ret_value.significand = (two_yi / 2) % 2 == 0 ?
+									(two_yi + 1) / 2 : two_yi / 2;
+							}
+						}
+						else {
+							ret_value.significand = (two_yi + 1) / 2;
+						}
+					}
+					else if constexpr (CorrectRoundingSearch::tag ==
+						grisu_exact_correct_rounding::tie_to_up_tag)
+					{
+						ret_value.significand = (two_yi + 1) / 2;
+					}
+					else {
+						if (!is_product_integer<integer_check_case_id::two_times_fc>(
+							significand, exponent, minus_k))
+						{
+							++two_yi;
+						}
+
+						ret_value.significand = two_yi / 2;
+					}
+				}
+
+			return_label:
 				return ret_value;
 			}
 
@@ -2570,6 +2609,13 @@ namespace jkj {
 				r = new_r;
 				divisor *= power_of_10<lambda>;
 				return true;
+			}
+
+			template <bool return_sign>
+			static fp_t<Float, return_sign>
+				correct_rounding_search_when_kappa_is_zero() noexcept
+			{
+
 			}
 		};
 	}
