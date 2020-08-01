@@ -65,25 +65,6 @@ void verify_correct_rounding_bound()
 				return false;
 			}
 			auto const kappa = kappa_min;
-			
-			// Note that the generous case always include the boundary, thus
-			// this value does not have the issue of kappa'
-			auto const right_bdy = grisu_exact_result_generous.significand;
-
-			// Correctly compute ceil(y/10^kappa - 1/2)
-			// Since y = 2^(e+q-1) * 10^k, let
-			// 2^(e+q) * 10^k = a * 10^kappa + b for some b in [0,10^kappa)
-			// Then 2^(e+q) * 10^(k-kappa) = a + b * 10^-kappa, so
-			// 2y/10^kappa - 1 = (a-1) + b * 10^-kappa.
-			// If a-1 is odd, we get floor((a-1)/2) + 1
-			// If a-1 is even and b != 0, we get floor((a-1)/2) + 1
-			// If a-1 is even and b == 0, we get floor((a-1)/2).
-			// 2^(e+q) * 10^k <= 2^(e+ek+q) * phi_k < 2^(e+ek+Q+q) <= 2^(gamma+q) <= 2^q,
-			// so extended_significand_type should suffice to hold these numbers
-			// Also, the integer part of 2^(e+q) * 10^k is nothing but the
-			// first q + beta bits of tilde{phi_k}.
-
-			extended_significand_type round_down;
 			auto divisor = extended_significand_type(1);
 			for (int i = 0; i < kappa; ++i) {
 				divisor *= 10;
@@ -91,45 +72,26 @@ void verify_correct_rounding_bound()
 
 			auto const& cache = get_cache<float_type>(k);
 			assert(-beta < common_info<float_type>::extended_precision);
-			extended_significand_type integer_part;
-			if constexpr (sizeof(float_type) == 4) {
-				integer_part = extended_significand_type(cache >> common_info<float_type>::extended_precision);
-				integer_part >>= -beta;
+
+			// To get n', we need to subtract 1, except when N = 10^kappa * n
+			// Thus, compute N first
+			auto fr = common_info<float_type>::sign_bit_mask | common_info<float_type>::boundary_bit;
+			auto zi = grisu_exact_impl<float_type>::compute_mul(fr, cache, -beta);
+			auto epsiloni = grisu_exact_impl<float_type>::template compute_delta<
+				jkj::grisu_exact_rounding_modes::left_closed_directed_tag>(
+				false, cache, -beta + 1);
+			auto displacement = (zi % divisor) + divisor / 2;
+
+			int np;
+			if (displacement > epsiloni) {
+				np = -1;
 			}
 			else {
-				static_assert(sizeof(float_type) == 8);
-				integer_part = cache.high() >> -beta;
+				np = int((epsiloni - displacement) / divisor);
 			}
 
-			auto const a = integer_part / divisor;
-			auto const bi = integer_part % divisor;
-			assert(a > 0);
-
-			// a-1 is even
-			if (a % 2 == 1) {
-				// Check if the remainder is zero
-				if (bi == 0) {
-					// Fractional part is zero if and only if 2^(e+q) * 10^k is an integer
-					if (e + common_info<float_type>::extended_precision + k >= 0 && k >= 0) {
-						round_down = (a - 1) / 2;
-					}
-					else {
-						round_down = (a - 1) / 2 + 1;
-					}
-				}
-				else {
-					round_down = (a - 1) / 2 + 1;
-				}
-			}
-			// a-1 is odd
-			else {
-				round_down = (a - 1) / 2 + 1;
-			}
-
-			// Measure the distance
-			auto const distance = right_bdy - round_down;
-			if (distance >= 6 && kappa != 0) {
-				std::cout << "distance = " << distance
+			if (np >= 5 && kappa != 0) {
+				std::cout << "n' = " << np
 					<< " (e = " << e << ", x = ";
 				std::cout << std::hex << std::setfill('0');				
 
@@ -140,7 +102,7 @@ void verify_correct_rounding_bound()
 				else {
 					static_assert(sizeof(float_type) == 8);
 					std::cout << std::setprecision(17) << x << " [0x" << std::setw(16);
-					if (distance >= 7) {
+					if (np >= 6) {
 						success = false;
 					}
 				}
