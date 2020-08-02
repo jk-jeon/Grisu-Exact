@@ -37,6 +37,10 @@ extern void verify_delta_computation();
 //#define VERIFY_CORRECT_ROUNDING_BOUND
 extern void verify_correct_rounding_bound();
 
+// Check if the simplification of the incorrect rounding removal is correct
+//#define VERIFY_INCORRECT_ROUNDING_REMOVAL
+extern void verify_incorrect_rounding_removal();
+
 // Generate random float's and test Grisu-Exact's output
 //#define UNIFORM_RANDOM_TEST_FLOAT
 static std::size_t number_of_uniform_random_tests_float = 10000000;
@@ -105,6 +109,10 @@ int main()
 
 #ifdef VERIFY_CORRECT_ROUNDING_BOUND
 	verify_correct_rounding_bound();
+#endif
+
+#ifdef VERIFY_INCORRECT_ROUNDING_REMOVAL
+	verify_incorrect_rounding_removal();
 #endif
 
 #ifdef UNIFORM_RANDOM_TEST_FLOAT

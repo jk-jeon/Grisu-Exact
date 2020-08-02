@@ -49,6 +49,7 @@
     <ClCompile Include="..\tests\verify_cache_length.cpp" />
     <ClCompile Include="..\tests\verify_correct_rounding_bound.cpp" />
     <ClCompile Include="..\tests\verify_delta_computation.cpp" />
+    <ClCompile Include="..\tests\verify_incorrect_rounding_removal.cpp" />
     <ClCompile Include="..\tests\verify_log_computation.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
@@ -175,6 +176,7 @@
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <FloatingPointModel>Precise</FloatingPointModel>
       <AdditionalIncludeDirectories>$(ProjectDir)..\benchmark</AdditionalIncludeDirectories>
+      <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

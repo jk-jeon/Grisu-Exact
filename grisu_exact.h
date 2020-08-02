@@ -2218,30 +2218,24 @@ namespace jkj {
 						}
 
 						// The calculated steps might be too much if the left endpoint is closer than usual
-						if (steps == 1 && significand == sign_bit_mask)
-						{
+						if (steps == 1 && significand == sign_bit_mask) {
 							// We know already r is at most deltai
 							deltai -= std::uint32_t(r);
 							if (divisor > deltai) {
-								steps = 0;
+								goto return_label;
 							}
 							else if (divisor == deltai) {
-								switch (zf_vs_deltaf) {
-								case zf_vs_deltaf_t::zf_larger:
-									steps = 0;
-									break;
-
-								case zf_vs_deltaf_t::not_compared_yet:
-									if (!is_zf_smaller_than_deltaf<IntervalTypeProvider::tag>(significand,
-										minus_beta, cache, interval_type, exponent, minus_k))
-									{
-										steps = 0;
+								// See the test result of verify_incorrect_rounding_removal.cpp
+								if constexpr (sizeof(Float) == 4) {
+									if (exponent == 59) {
+										goto return_label;
 									}
-									break;
-
-								case zf_vs_deltaf_t::zf_smaller:
-									// Do nothing; just to silence the warning
-									break;
+								}
+								else {
+									static_assert(sizeof(Float) == 8);
+									if (exponent == -203) {
+										goto return_label;
+									}
 								}
 							}
 						}

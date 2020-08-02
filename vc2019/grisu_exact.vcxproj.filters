@@ -101,5 +101,8 @@
     <ClCompile Include="..\tests\verify_correct_rounding_bound.cpp">
       <Filter>tests</Filter>
     </ClCompile>
+    <ClCompile Include="..\tests\verify_incorrect_rounding_removal.cpp">
+      <Filter>tests</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
