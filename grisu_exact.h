@@ -1394,6 +1394,7 @@ namespace jkj {
 		};
 		namespace interval_type {
 			struct symmetric_boundary {
+				static constexpr bool is_symmetric = true;
 				bool is_closed;
 
 				bool include_left_endpoint() const noexcept {
@@ -1404,6 +1405,7 @@ namespace jkj {
 				}
 			};
 			struct asymmetric_boundary {
+				static constexpr bool is_symmetric = false;
 				bool is_left_closed;
 				bool include_left_endpoint() const noexcept {
 					return is_left_closed;
@@ -1413,6 +1415,7 @@ namespace jkj {
 				}
 			};
 			struct closed {
+				static constexpr bool is_symmetric = true;
 				static constexpr bool include_left_endpoint() noexcept {
 					return true;
 				}
@@ -1421,6 +1424,7 @@ namespace jkj {
 				}
 			};
 			struct open {
+				static constexpr bool is_symmetric = true;
 				static constexpr bool include_left_endpoint() noexcept {
 					return false;
 				}
@@ -1429,6 +1433,7 @@ namespace jkj {
 				}
 			};
 			struct left_closed_right_open {
+				static constexpr bool is_symmetric = false;
 				static constexpr bool include_left_endpoint() noexcept {
 					return true;
 				}
@@ -1437,6 +1442,7 @@ namespace jkj {
 				}
 			};
 			struct right_closed_left_open {
+				static constexpr bool is_symmetric = false;
 				static constexpr bool include_left_endpoint() noexcept {
 					return false;
 				}
@@ -1999,19 +2005,21 @@ namespace jkj {
 								if constexpr (IntervalTypeProvider::tag ==
 									grisu_exact_rounding_modes::to_nearest_tag)
 								{
-									// Strictly speaking, significand == sign_bit_mask
-									// is not the correct expression for checking the edge case.
-									// However, we don't need to additionally check
-									// exponent != min_exponent because if
-									// exponent == min_exponent, then the result is false
-									// regardless of the value of significand.
-									if (!interval_type.include_left_endpoint() &&
-										is_delta_integer<IntervalTypeProvider::tag>(
-											significand == sign_bit_mask, exponent))
+									// We need to decrease kappa if
+									// (1) The left boundary is not included, and
+									// (2) delta is exactly equal to 10^kappa.
+									// For symmetric boundary conditions, the first condition is
+									// always true because we already have checked it,
+									// and otherwise it is always false.
+									// The second condition is true if and only if e = -(q-p-1).
+									if constexpr (decltype(interval_type)::is_symmetric)
 									{
-										ret_value.significand *= 10;
-										divisor /= 10;
-										--ret_value.exponent;
+										if (exponent == -int(extended_precision - precision - 1))
+										{
+											ret_value.significand *= 10;
+											divisor /= 10;
+											--ret_value.exponent;
+										}
 									}
 								}
 								break;
@@ -2167,10 +2175,8 @@ namespace jkj {
 						// Check fractional if necessary
 						if (epsiloni == 0) {
 							auto yi = compute_mul(significand, cache, minus_beta);
-							if (yi > approx_y) {
-								--steps;
-							}
-							else if (yi == approx_y) {
+							// We have either yi == approx_y or yi == approx_y - 1
+							if (yi == approx_y) {
 								if constexpr (CorrectRoundingSearch::tag ==
 									grisu_exact_correct_rounding::tie_to_even_tag ||
 									CorrectRoundingSearch::tag ==
@@ -2212,10 +2218,7 @@ namespace jkj {
 						}
 
 						// The calculated steps might be too much if the left endpoint is closer than usual
-						if (steps == 1 &&
-							(significand == sign_bit_mask ||
-								(!interval_type.include_left_endpoint() &&
-									interval_type.include_right_endpoint())))
+						if (steps == 1 && significand == sign_bit_mask)
 						{
 							// We know already r is at most deltai
 							deltai -= std::uint32_t(r);
@@ -2521,40 +2524,6 @@ namespace jkj {
 				return is_zf_strictly_smaller_than_deltaf(fl, minus_beta, cache) ||
 					(interval_type.include_left_endpoint() &&
 						equal_fractional_parts<tag>(fl, exponent, minus_k));
-			}				
-
-			template <grisu_exact_rounding_modes::tag_t tag>
-			static bool is_delta_integer([[maybe_unused]] bool is_edge_case, int exponent) noexcept
-			{
-				// For nearest rounding
-				if constexpr (tag == grisu_exact_rounding_modes::to_nearest_tag)
-				{
-					if (is_edge_case) {
-						return exponent >= integer_check_exponent_lower_bound_for_q_mp_m3 &&
-							exponent <= max_exponent_for_k_geq_0;
-					}
-					else {
-						return exponent >= integer_check_exponent_lower_bound_for_q_mp_m1 &&
-							exponent <= max_exponent_for_k_geq_0;
-					}
-				}
-				// For left-closed directed rounding
-				else if constexpr (tag == grisu_exact_rounding_modes::left_closed_directed_tag)
-				{
-					return exponent >= integer_check_exponent_lower_bound_for_q_mp_m1 &&
-						exponent <= max_exponent_for_k_geq_0;
-				}
-				// For right-closed directed rounding
-				else {
-					if (is_edge_case) {
-						return exponent >= integer_check_exponent_lower_bound_for_q_mp_m2 &&
-							exponent <= max_exponent_for_k_geq_0;
-					}
-					else {
-						return exponent >= integer_check_exponent_lower_bound_for_q_mp_m1 &&
-							exponent <= max_exponent_for_k_geq_0;
-					}
-				}
 			}
 
 			// Perform binary search to find kappa upward
@@ -2609,13 +2578,6 @@ namespace jkj {
 				r = new_r;
 				divisor *= power_of_10<lambda>;
 				return true;
-			}
-
-			template <bool return_sign>
-			static fp_t<Float, return_sign>
-				correct_rounding_search_when_kappa_is_zero() noexcept
-			{
-
 			}
 		};
 	}
