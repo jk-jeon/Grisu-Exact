@@ -180,8 +180,8 @@ Float randomly_generate_float_with_given_digits(unsigned int digits, RandGen& rg
 			}
 
 			// Discard if a shorter representation exists
-			// We don't need to care about coorect rounding here
-			auto roundtrip = jkj::grisu_exact(result,
+			// We don't need to care about sign and correct rounding here
+			auto roundtrip = jkj::grisu_exact<false>(result,
 				jkj::grisu_exact_rounding_modes::nearest_to_even{},
 				jkj::grisu_exact_correct_rounding::do_not_care{});
 			if (from != 0 && roundtrip.significand <= extended_significand_type(from * 10)) {
