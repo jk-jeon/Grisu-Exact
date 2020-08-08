@@ -16,8 +16,6 @@
 // KIND, either express or implied.
 
 #include "bigint.h"
-#include <algorithm>
-#include <vector>
 
 namespace jkj {
 	namespace grisu_exact_detail {

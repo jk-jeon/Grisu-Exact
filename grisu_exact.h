@@ -236,9 +236,8 @@ namespace jkj {
 			static constexpr auto size = N;
 			divisibility_test_table_entry<UInt> value[N];
 		};
-		template <class UInt>
+		template <class UInt, std::size_t size>
 		constexpr auto generate_divisibility_test_table() noexcept {
-			constexpr std::size_t size = std::is_same_v<UInt, std::uint32_t> ? 12 : 24;
 			using return_type = divisibility_test_table<UInt, size>;
 
 			return_type table{};
@@ -253,7 +252,8 @@ namespace jkj {
 		}
 		template <class UInt>
 		struct divisibility_test_table_holder {
-			static constexpr auto table = generate_divisibility_test_table<UInt>();
+			static constexpr auto table = generate_divisibility_test_table<UInt,
+				std::is_same_v<UInt, std::uint32_t> ? 12 : 24>();
 		};
 		template <class UInt>
 		constexpr bool divisible_by_power_of_5(UInt x, unsigned int exp) noexcept {
@@ -1214,6 +1214,12 @@ namespace jkj {
 		extended_significand_type f;
 
 		//// Inspector methods
+
+		Float as_ieee754() const noexcept {
+			Float x;
+			std::memcpy(&x, &f, sizeof(Float));
+			return x;
+		}
 
 		extended_significand_type extract_significand_bits() const noexcept {
 			constexpr auto significand_bits_mask =
