@@ -1221,23 +1221,23 @@ namespace jkj {
 			return x;
 		}
 
-		extended_significand_type extract_significand_bits() const noexcept {
+		constexpr extended_significand_type extract_significand_bits() const noexcept {
 			constexpr auto significand_bits_mask =
 				(extended_significand_type(1) << precision) - 1;
 			return f & significand_bits_mask;
 		}
 
-		std::uint32_t extract_exponent_bits() const noexcept {
+		constexpr std::uint32_t extract_exponent_bits() const noexcept {
 			constexpr auto exponent_bits_mask =
 				(std::uint32_t(1) << exponent_bits) - 1;
 			return std::uint32_t(f >> precision) & exponent_bits_mask;
 		}
 
-		bool is_finite() const noexcept {
+		constexpr bool is_finite() const noexcept {
 			return (f & exponent_bits_mask) != exponent_bits_mask;
 		}
 
-		bool is_nonzero() const noexcept {
+		constexpr bool is_nonzero() const noexcept {
 			// vs (f & ~sign_bit_mask) != 0;
 			// It seems that there is no AND instruction for 64-bit immediate value in x86,
 			// thus (f & ~sign_bit_mask) != 0 generates 3 instructions (load, and, compare),
@@ -1246,12 +1246,12 @@ namespace jkj {
 		}
 
 		// Allows positive and negative zeros
-		bool is_subnormal() const noexcept {
+		constexpr bool is_subnormal() const noexcept {
 			return (f & exponent_bits_mask) == 0;
 		}
 
 		// Allows negative zero and negative NaN's, but not allow positive zero
-		bool is_negative() const noexcept {
+		constexpr bool is_negative() const noexcept {
 			// vs (f & sign_bit_mask) != 0;
 			// It seems that there is no AND instruction for 64-bit immediate value in x86,
 			// thus (f & sign_bit_mask) != 0 generates 3 instructions (load, and, compare),
@@ -1260,28 +1260,28 @@ namespace jkj {
 		}
 
 		// Allows positive zero and positive NaN's, but not allow negative zero
-		bool is_positive() const noexcept {
+		constexpr bool is_positive() const noexcept {
 			// vs (f & sign_bit_mask) == 0;
 			// Ditto
 			return (f >> (extended_precision - 1)) == 0;
 		}
 
-		bool is_positive_infinity() const noexcept {
+		constexpr bool is_positive_infinity() const noexcept {
 			constexpr auto positive_infinity = exponent_bits_mask;
 			return f == positive_infinity;
 		}
 
-		bool is_negative_infinity() const noexcept {
+		constexpr bool is_negative_infinity() const noexcept {
 			constexpr auto negative_infinity = exponent_bits_mask | sign_bit_mask;
 			return f == negative_infinity;
 		}
 
 		// Allows both plus and minus infinities
-		bool is_infinity() const noexcept {
+		constexpr bool is_infinity() const noexcept {
 			return is_positive_infinity() || is_negative_infinity();
 		}
 
-		bool is_nan() const noexcept {
+		constexpr bool is_nan() const noexcept {
 			return !is_finite() && (extract_significand_bits() != 0);
 		}
 
