@@ -1403,20 +1403,20 @@ namespace jkj {
 				static constexpr bool is_symmetric = true;
 				bool is_closed;
 
-				bool include_left_endpoint() const noexcept {
+				constexpr bool include_left_endpoint() const noexcept {
 					return is_closed;
 				}
-				bool include_right_endpoint() const noexcept {
+				constexpr bool include_right_endpoint() const noexcept {
 					return is_closed;
 				}
 			};
 			struct asymmetric_boundary {
 				static constexpr bool is_symmetric = false;
 				bool is_left_closed;
-				bool include_left_endpoint() const noexcept {
+				constexpr bool include_left_endpoint() const noexcept {
 					return is_left_closed;
 				}
-				bool include_right_endpoint() const noexcept {
+				constexpr bool include_right_endpoint() const noexcept {
 					return !is_left_closed;
 				}
 			};
@@ -1469,7 +1469,7 @@ namespace jkj {
 					br, *this);
 			}
 			template <class Float>
-			interval_type::symmetric_boundary operator()(bit_representation_t<Float> br) const noexcept {
+			constexpr interval_type::symmetric_boundary operator()(bit_representation_t<Float> br) const noexcept {
 				return{ br.f % 2 == 0 };
 			}
 		};
@@ -1484,7 +1484,7 @@ namespace jkj {
 					br, *this);
 			}
 			template <class Float>
-			interval_type::symmetric_boundary operator()(bit_representation_t<Float> br) const noexcept {
+			constexpr interval_type::symmetric_boundary operator()(bit_representation_t<Float> br) const noexcept {
 				return{ br.f % 2 != 0 };
 			}
 		};
@@ -1499,7 +1499,7 @@ namespace jkj {
 					br, *this);
 			}
 			template <class Float>
-			interval_type::asymmetric_boundary operator()(bit_representation_t<Float> br) const noexcept {
+			constexpr interval_type::asymmetric_boundary operator()(bit_representation_t<Float> br) const noexcept {
 				return{ !br.is_negative() };
 			}
 		};
@@ -1514,7 +1514,7 @@ namespace jkj {
 					br, *this);
 			}
 			template <class Float>
-			interval_type::asymmetric_boundary operator()(bit_representation_t<Float> br) const noexcept {
+			constexpr interval_type::asymmetric_boundary operator()(bit_representation_t<Float> br) const noexcept {
 				return{ br.is_negative() };
 			}
 		};
@@ -1530,7 +1530,7 @@ namespace jkj {
 					br, *this);
 			}
 			template <class Float>
-			interval_type::right_closed_left_open operator()(bit_representation_t<Float>) const noexcept {
+			constexpr interval_type::right_closed_left_open operator()(bit_representation_t<Float>) const noexcept {
 				return{};
 			}
 		};
@@ -1545,7 +1545,7 @@ namespace jkj {
 					br, *this);
 			}
 			template <class Float>
-			interval_type::left_closed_right_open operator()(bit_representation_t<Float>) const noexcept {
+			constexpr interval_type::left_closed_right_open operator()(bit_representation_t<Float>) const noexcept {
 				return{};
 			}
 		};
@@ -1555,7 +1555,7 @@ namespace jkj {
 				static constexpr tag_t tag = to_nearest_tag;
 
 				template <class Float>
-				interval_type::closed operator()(bit_representation_t<Float>) const noexcept {
+				constexpr interval_type::closed operator()(bit_representation_t<Float>) const noexcept {
 					return{};
 				}
 			};
@@ -1563,7 +1563,7 @@ namespace jkj {
 				static constexpr tag_t tag = to_nearest_tag;
 
 				template <class Float>
-				interval_type::open operator()(bit_representation_t<Float>) const noexcept {
+				constexpr interval_type::open operator()(bit_representation_t<Float>) const noexcept {
 					return{};
 				}
 			};
@@ -1643,7 +1643,7 @@ namespace jkj {
 				static constexpr tag_t tag = left_closed_directed_tag;
 
 				template <class Float>
-				interval_type::left_closed_right_open operator()(bit_representation_t<Float>) const noexcept {
+				constexpr interval_type::left_closed_right_open operator()(bit_representation_t<Float>) const noexcept {
 					return{};
 				}
 			};
@@ -1651,7 +1651,7 @@ namespace jkj {
 				static constexpr tag_t tag = right_closed_directed_tag;
 
 				template <class Float>
-				interval_type::right_closed_left_open operator()(bit_representation_t<Float>) const noexcept {
+				constexpr interval_type::right_closed_left_open operator()(bit_representation_t<Float>) const noexcept {
 					return{};
 				}
 			};
@@ -1664,12 +1664,12 @@ namespace jkj {
 			{
 				if (br.is_negative()) {
 					return std::forward<CorrectRoundingSearch>(crs).template delegate<return_sign>(
-						br, detail::right_closed_directed{});
+						br, detail::left_closed_directed{});
 					
 				}
 				else {
 					return std::forward<CorrectRoundingSearch>(crs).template delegate<return_sign>(
-						br, detail::left_closed_directed{});
+						br, detail::right_closed_directed{});
 				}
 			}
 		};
@@ -1680,11 +1680,11 @@ namespace jkj {
 			{
 				if (br.is_negative()) {
 					return std::forward<CorrectRoundingSearch>(crs).template delegate<return_sign>(
-						br, detail::left_closed_directed{});
+						br, detail::right_closed_directed{});
 				}
 				else {
 					return std::forward<CorrectRoundingSearch>(crs).template delegate<return_sign>(
-						br, detail::right_closed_directed{});
+						br, detail::left_closed_directed{});
 				}
 			}
 		};
@@ -1694,7 +1694,7 @@ namespace jkj {
 				CorrectRoundingSearch&& crs) const
 			{
 				return std::forward<CorrectRoundingSearch>(crs).template delegate<return_sign>(
-					br, detail::right_closed_directed{});
+					br, detail::left_closed_directed{});
 			}
 		};
 		struct away_from_zero {
@@ -1703,7 +1703,7 @@ namespace jkj {
 				CorrectRoundingSearch&& crs) const
 			{
 				return std::forward<CorrectRoundingSearch>(crs).template delegate<return_sign>(
-					br, detail::left_closed_directed{});
+					br, detail::right_closed_directed{});
 			}
 		};
 	}
