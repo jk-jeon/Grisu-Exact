@@ -2080,6 +2080,7 @@ namespace jkj {
 				{
 					// We already know r is at most deltai
 					deltai -= std::uint32_t(r);
+					auto approx_x = zi - deltai;
 
 					auto const current_digit = ret_value.significand % 10;
 
@@ -2089,6 +2090,38 @@ namespace jkj {
 						auto const displacement = steps * divisor;
 						if (displacement > deltai) {
 							steps /= 2;
+						}
+						else if (displacement == deltai) {
+							// Compare fractional parts
+							// If zf <= deltaf, we can move to the left
+							// Otherwise, we should back off by 1
+							// The function is_zf_smaller_than_deltaf relies on
+							// several assumptions that are not true here.
+							// Hence, we need to do the comparison more carefully,
+							// by comparing the parity of approx_x and xi.
+							// x = (zi - deltai) + (zf - deltaf)
+							switch (zf_vs_deltaf) {
+							case zf_vs_deltaf_t::zf_larger:
+								--steps;
+								break;
+
+							case zf_vs_deltaf_t::not_compared_yet:
+								// zf >= deltaf ?
+								if ((compute_mul(significand, cache, minus_beta) & 1) == (approx_x & 1))
+								{
+									// zf > deltaf ?
+									if (!equal_fractional_parts<IntervalTypeProvider::tag>(
+										significand, exponent, minus_k))
+									{
+										--steps;
+									}
+								}
+								break;
+
+							case zf_vs_deltaf_t::zf_smaller:
+								break;
+							}
+							goto return_label;
 						}
 						else {
 							ret_value.significand -= steps;
