@@ -119,17 +119,18 @@ void verify_incorrect_rounding_removal()
 			}
 
 			// Check if the distance from floor(z/10^kappa) is exactly 1
-			auto fr = common_info<float_type>::sign_bit_mask | common_info<float_type>::boundary_bit;
-			auto zi = grisu_exact_impl<float_type>::compute_mul(fr, cache, -beta);
-			auto deltai = grisu_exact_impl<float_type>::template compute_delta<
+			auto const fr = common_info<float_type>::sign_bit_mask | common_info<float_type>::boundary_bit;
+			auto const zi = grisu_exact_impl<float_type>::compute_mul(fr, cache, -beta);
+			auto const deltai = grisu_exact_impl<float_type>::template compute_delta<
 				jkj::grisu_exact_rounding_modes::to_nearest_tag>(true, cache, -beta);
-			auto right_bdy = zi / divisor;
-			auto r = zi % divisor;
+			auto const approx_x = zi - deltai;
+			auto const right_bdy = zi / divisor;
+			auto const r = zi % divisor;
 
 			if (right_bdy == rounded_down + 1) {
 				// In this case, compare r_kappa + 10^kappa + z^(f) with delta
 				// We are interested in the case when the integer part of those two are the same
-				auto distancei = r + divisor;
+				auto const distancei = r + divisor;
 				if (distancei == deltai) {
 					std::cout << "Coincidence of integer parts detected (x = "
 						<< std::hex << std::setfill('0');
@@ -145,10 +146,10 @@ void verify_incorrect_rounding_removal()
 					std::cout << bit_rep << "], e = " << std::dec << e << "): ";
 
 					// Now, compare the fractional parts
-					auto fl = common_info<float_type>::sign_bit_mask -
+					auto const fl = common_info<float_type>::sign_bit_mask -
 						common_info<float_type>::edge_case_boundary_bit;
 
-					if (grisu_exact_impl<float_type>::is_zf_strictly_smaller_than_deltaf(fl, -beta, cache))
+					if ((grisu_exact_impl<float_type>::compute_mul(fl, cache, -beta) & 1) != (approx_x & 1))
 					{
 						std::cout << "z^(f) < delta^(f)\n";
 						
@@ -202,14 +203,14 @@ void verify_incorrect_rounding_removal()
 	};
 
 	if (verify_single_type(common_info<float>{}))
-		std::cout << "incorrect rounding removal for binary32: verified." << std::endl;
+		std::cout << "Incorrect rounding removal for binary32: verified." << std::endl;
 	else
-		std::cout << "incorrect rounding removal for binary32: failed." << std::endl;
+		std::cout << "Incorrect rounding removal for binary32: failed." << std::endl;
 
 	if (verify_single_type(common_info<double>{}))
-		std::cout << "incorrect rounding removal for binary64: verified." << std::endl;
+		std::cout << "Incorrect rounding removal for binary64: verified." << std::endl;
 	else
-		std::cout << "incorrect rounding removal for binary64: failed." << std::endl;
+		std::cout << "Incorrect rounding removal for binary64: failed." << std::endl;
 
 	std::cout << "Done.\n\n\n";
 }
