@@ -2080,7 +2080,7 @@ namespace jkj {
 				{
 					// We already know r is at most deltai
 					deltai -= std::uint32_t(r);
-					auto approx_x = zi - deltai;
+					auto const approx_x = zi - deltai;
 
 					auto const current_digit = ret_value.significand % 10;
 
