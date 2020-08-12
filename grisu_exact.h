@@ -1888,12 +1888,9 @@ namespace jkj {
 					if (new_r < deltai) {
 						goto decrease_kappa_by_1_label;
 					}
-					else if (deltai == new_r) {
-						switch (zf_vs_deltaf) {
-						case zf_vs_deltaf_t::zf_smaller:
-							goto decrease_kappa_by_1_label;
-
-						case zf_vs_deltaf_t::not_compared_yet:
+					else if (new_r == deltai) {
+						// zf_vs_deltaf cannot be zf_smaller here
+						if (zf_vs_deltaf == zf_vs_deltaf_t::not_compared_yet) {
 							if (is_zf_smaller_than_deltaf<IntervalTypeProvider::tag>(significand,
 								minus_beta, cache, interval_type, exponent, minus_k))
 							{
@@ -1901,11 +1898,6 @@ namespace jkj {
 								goto decrease_kappa_by_1_label;
 							}
 							zf_vs_deltaf = zf_vs_deltaf_t::zf_larger;
-							break;
-
-						case zf_vs_deltaf_t::zf_larger:
-							// Do nothing; just to silence the warning
-							break;
 						}
 					}
 
@@ -1961,29 +1953,30 @@ namespace jkj {
 
 			increasing_search_label:
 				// Perform binary search
+
 				if constexpr (sizeof(Float) == 4) {
 					// This procedure strictly depends on our specific choice of these parameters:
 					static_assert(max_kappa - initial_kappa < 8);
 
-					increasing_search<4, IntervalTypeProvider::tag>(ret_value, interval_type, zf_vs_deltaf,
-						exponent, minus_k, minus_beta, significand, r, divisor, deltai, cache);
-					increasing_search<2, IntervalTypeProvider::tag>(ret_value, interval_type, zf_vs_deltaf,
-						exponent, minus_k, minus_beta, significand, r, divisor, deltai, cache);
-					increasing_search<1, IntervalTypeProvider::tag>(ret_value, interval_type, zf_vs_deltaf,
-						exponent, minus_k, minus_beta, significand, r, divisor, deltai, cache);
+					increasing_search<4, IntervalTypeProvider::tag, true>(ret_value, interval_type,
+						zf_vs_deltaf, exponent, minus_k, minus_beta, significand, r, divisor, deltai, cache);
+					increasing_search<2, IntervalTypeProvider::tag, false>(ret_value, interval_type,
+						zf_vs_deltaf, exponent, minus_k, minus_beta, significand, r, divisor, deltai, cache);
+					increasing_search<1, IntervalTypeProvider::tag, false>(ret_value, interval_type,
+						zf_vs_deltaf, exponent, minus_k, minus_beta, significand, r, divisor, deltai, cache);
 				}
 				else {
 					// This procedure strictly depends on our specific choice of these parameters:
 					static_assert(max_kappa - initial_kappa < 16);
 
-					increasing_search<8, IntervalTypeProvider::tag>(ret_value, interval_type, zf_vs_deltaf,
-						exponent, minus_k, minus_beta, significand, r, divisor, deltai, cache);
-					increasing_search<4, IntervalTypeProvider::tag>(ret_value, interval_type, zf_vs_deltaf,
-						exponent, minus_k, minus_beta, significand, r, divisor, deltai, cache);
-					increasing_search<2, IntervalTypeProvider::tag>(ret_value, interval_type, zf_vs_deltaf,
-						exponent, minus_k, minus_beta, significand, r, divisor, deltai, cache);
-					increasing_search<1, IntervalTypeProvider::tag>(ret_value, interval_type, zf_vs_deltaf,
-						exponent, minus_k, minus_beta, significand, r, divisor, deltai, cache);
+					increasing_search<8, IntervalTypeProvider::tag, true>(ret_value, interval_type,
+						zf_vs_deltaf, exponent, minus_k, minus_beta, significand, r, divisor, deltai, cache);
+					increasing_search<4, IntervalTypeProvider::tag, false>(ret_value, interval_type,
+						zf_vs_deltaf, exponent, minus_k, minus_beta, significand, r, divisor, deltai, cache);
+					increasing_search<2, IntervalTypeProvider::tag, false>(ret_value, interval_type,
+						zf_vs_deltaf, exponent, minus_k, minus_beta, significand, r, divisor, deltai, cache);
+					increasing_search<1, IntervalTypeProvider::tag, false>(ret_value, interval_type,
+						zf_vs_deltaf, exponent, minus_k, minus_beta, significand, r, divisor, deltai, cache);
 				}
 
 
@@ -2101,10 +2094,6 @@ namespace jkj {
 							// by comparing the parity of approx_x and xi.
 							// x = (zi - deltai) + (zf - deltaf)
 							switch (zf_vs_deltaf) {
-							case zf_vs_deltaf_t::zf_larger:
-								--steps;
-								break;
-
 							case zf_vs_deltaf_t::not_compared_yet:
 								// zf >= deltaf ?
 								if ((compute_mul(significand, cache, minus_beta) & 1) == (approx_x & 1))
@@ -2116,6 +2105,10 @@ namespace jkj {
 										--steps;
 									}
 								}
+								break;
+
+							case zf_vs_deltaf_t::zf_larger:
+								--steps;
 								break;
 
 							case zf_vs_deltaf_t::zf_smaller:
@@ -2232,11 +2225,13 @@ namespace jkj {
 										if constexpr (CorrectRoundingSearch::tag ==
 											grisu_exact_correct_rounding::tie_to_even_tag)
 										{
-											steps = (ret_value.significand - steps) % 2 == 1 ? steps - 1 : steps;
+											steps = (ret_value.significand & 1) != extended_significand_type(steps & 1)
+												? steps - 1 : steps;
 										}
 										else
 										{
-											steps = (ret_value.significand - steps) % 2 == 0 ? steps - 1 : steps;
+											steps = (ret_value.significand & 1) == extended_significand_type(steps & 1)
+												? steps - 1 : steps;
 										}
 									}
 									else {
@@ -2563,7 +2558,7 @@ namespace jkj {
 			// Returns true if kappa + lambda is a possible candidate
 			template <extended_significand_type lambda,
 				grisu_exact_rounding_modes::tag_t tag,
-				bool is_signed, class IntervalType
+				bool is_initial_search, bool is_signed, class IntervalType
 			>
 			static bool increasing_search(
 				fp_t<Float, is_signed>& ret_value,
@@ -2581,27 +2576,41 @@ namespace jkj {
 
 				// Check if delta is still greater than or equal to the remainder
 				// delta should be strictly greater if the left boundary is not contained
-				if (deltai < new_r) {
+				if (new_r > deltai) {
 					return false;
 				}
-				else if (deltai == new_r) {
-					switch (zf_vs_deltaf) {
-					case zf_vs_deltaf_t::zf_larger:
-						return false;
-
-					case zf_vs_deltaf_t::not_compared_yet:
-						if (!is_zf_smaller_than_deltaf<tag>(fc,
-							minus_beta, cache, interval_type, exponent, minus_k))
-						{
-							zf_vs_deltaf = zf_vs_deltaf_t::zf_larger;
-							return false;
+				else if (new_r == deltai) {
+					if constexpr (is_initial_search) {
+						// zf_vs_deltaf cannot be zf_larger here
+						if (zf_vs_deltaf == zf_vs_deltaf_t::not_compared_yet) {
+							if (!is_zf_smaller_than_deltaf<tag>(fc,
+								minus_beta, cache, interval_type, exponent, minus_k))
+							{
+								zf_vs_deltaf = zf_vs_deltaf_t::zf_larger;
+								return false;
+							}
+							zf_vs_deltaf = zf_vs_deltaf_t::zf_smaller;
 						}
-						zf_vs_deltaf = zf_vs_deltaf_t::zf_smaller;
-						break;
+					}
+					else {
+						switch (zf_vs_deltaf) {
+						case zf_vs_deltaf_t::not_compared_yet:
+							if (!is_zf_smaller_than_deltaf<tag>(fc,
+								minus_beta, cache, interval_type, exponent, minus_k))
+							{
+								zf_vs_deltaf = zf_vs_deltaf_t::zf_larger;
+								return false;
+							}
+							zf_vs_deltaf = zf_vs_deltaf_t::zf_smaller;
+							break;
 
-					case zf_vs_deltaf_t::zf_smaller:
-						// Do nothing; just to silence the warning
-						break;
+						case zf_vs_deltaf_t::zf_larger:
+							return false;
+
+						case zf_vs_deltaf_t::zf_smaller:
+							// Do nothing; just to silence the warning
+							break;
+						}
 					}
 				}
 
