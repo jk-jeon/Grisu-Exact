@@ -1833,11 +1833,6 @@ namespace jkj {
 				auto deltai = compute_delta<IntervalTypeProvider::tag>(
 					significand == sign_bit_mask && exponent != min_exponent, cache, minus_beta);
 
-				// These are needed for correct rounding search
-				auto epsiloni = compute_delta<grisu_exact_rounding_modes::left_closed_directed_tag>(
-					false, cache, minus_beta + 1);
-				[[maybe_unused]] auto approx_y = zi - epsiloni;
-
 
 				//////////////////////////////////////////////////////////////////////
 				// Step 2: Search for kappa
@@ -1847,9 +1842,9 @@ namespace jkj {
 				auto zf_vs_deltaf = zf_vs_deltaf_t::not_compared_yet;
 
 				// Compute s and r for initial kappa
+				extended_significand_type divisor;
 				ret_value.significand = zi / power_of_10<initial_kappa>;
 				auto r = zi % power_of_10<initial_kappa>;
-				auto divisor = power_of_10<initial_kappa>;
 
 				ret_value.exponent = initial_kappa + minus_k;
 
@@ -1953,6 +1948,7 @@ namespace jkj {
 
 			increasing_search_label:
 				// Perform binary search
+				divisor = power_of_10<initial_kappa>;
 
 				if constexpr (sizeof(Float) == 4) {
 					// This procedure strictly depends on our specific choice of these parameters:
@@ -2138,9 +2134,13 @@ namespace jkj {
 					// -1: 51.9%   0: 31.9%   1: 10.2%   2:  4.5% 
 					//  3:  1.4%   4:  0.1%   5:  0.0%
 					auto const displacement = (divisor / 2) + r;
+					auto epsiloni = compute_delta<grisu_exact_rounding_modes::left_closed_directed_tag>(
+						false, cache, minus_beta + 1);
 
 					// n' + 1 >= 1?
 					if (displacement <= epsiloni) {
+						auto const approx_y = zi - epsiloni;
+
 						std::uint8_t steps;
 						epsiloni -= std::uint32_t(displacement);
 
@@ -2206,7 +2206,7 @@ namespace jkj {
 
 						// Check fractional if necessary
 						if (epsiloni == 0) {
-							auto yi = compute_mul(significand, cache, minus_beta);
+							auto const yi = compute_mul(significand, cache, minus_beta);
 							// We have either yi == approx_y or yi == approx_y - 1
 							if (yi == approx_y) {
 								if constexpr (CorrectRoundingSearch::tag ==
