@@ -33,9 +33,10 @@ However, note that features provided in [`fp_to_chars.h`](fp_to_chars.h)/[`.cpp`
 
 Besides these three, any other files are unncessary for real use.
 
-The library uses some C++17 features (e.g., `if constexpr`), so you need C++17 compilers if you want to use this library.
-
 A comprehensive reference for this library is in preparation.
+
+# Language Standard
+The library is targetting C++17 and actively using its features (e.g., `if constexpr`). For those who want, there is also a C++11-compatible implementation: https://github.com/jk-jeon/Grisu-Exact11.
 
 # Usage Examples
 (Simple string generation from `float/double`)
