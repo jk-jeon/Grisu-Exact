@@ -209,8 +209,7 @@ namespace jkj {
 		}
 
 		// Check if a number is a multiple of 5^exp
-		// Use the algorithm introduced in
-		// "Quick Modular Calculations" by Cassio Neri, Dec. 2019, ACCU Overload Journal #154, page 13
+		// Use the algorithm introduced in Section 9 of Granlund-Montgomery
 		template <class UInt>
 		constexpr UInt compute_modular_inverse_of_5() {
 			// Use Euler's theorem
