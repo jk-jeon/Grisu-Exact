@@ -180,9 +180,14 @@ namespace jkj {
 #if (defined(__GNUC__) || defined(__clang__)) && defined(__x86_64__)
 			int index;
 			if constexpr (std::is_same_v<UInt, std::uint32_t>) {
-				static_assert(sizeof(unsigned long) == 4,
-					"jkj::grisu_exact: unsigned long should be 4 bytes long");
-				index = __builtin_ctz((unsigned long)x);
+				if constexpr (sizeof(unsigned long) == 4) {
+					index = __builtin_ctzl((unsigned long)x);
+				}
+				else {
+					static_assert(sizeof(unsigned int) == 4,
+						"jkj::grisu_exact: at least one of unsigned int and unsigned long should be 4 bytes long");
+					index = __builtin_ctz((unsigned int)x);
+				}
 			}
 			else {
 				static_assert(sizeof(unsigned long long) == 8,
