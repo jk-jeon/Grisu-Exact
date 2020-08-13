@@ -53,7 +53,7 @@ namespace jkj {
 		struct uint128 {
 			uint128() = default;
 
-#if defined(__GNUC__) || defined(__clang__) && defined(__SIZEOF_INT128__) && defined(__x86_64__)
+#if (defined(__GNUC__) || defined(__clang__)) && defined(__SIZEOF_INT128__) && defined(__x86_64__)
 			unsigned __int128	internal_;
 
 			constexpr uint128(std::uint64_t high, std::uint64_t low) noexcept :
@@ -204,7 +204,7 @@ namespace jkj {
 			if (exp >= int(sizeof(UInt) * 8)) {
 				return false;
 			}
-			return f == ((f >> exp) << exp); 
+			return x == ((x >> exp) << exp); 
 #endif
 		}
 
