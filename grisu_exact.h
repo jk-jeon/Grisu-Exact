@@ -163,8 +163,7 @@ namespace jkj {
 
 		// Compute b^e in compile-time
 		template <class UInt>
-		constexpr UInt compute_power(UInt b, unsigned int e) noexcept
-		{
+		constexpr UInt compute_power(UInt b, unsigned int e) noexcept {
 			UInt r = 1;
 			for (unsigned int i = 0; i < e; ++i) {
 				r *= b;
@@ -211,7 +210,7 @@ namespace jkj {
 		// Check if a number is a multiple of 5^exp
 		// Use the algorithm introduced in Section 9 of Granlund-Montgomery
 		template <class UInt>
-		constexpr UInt compute_modular_inverse_of_5() {
+		constexpr UInt compute_modular_inverse_of_5() noexcept {
 			// Use Euler's theorem
 			// phi(p^k) = p^(k-1) * (p-1), so phi(2^n) = 2^(n-1).
 			// Hence, we need to compute 5^(2^(n-1) - 1), which is equal to
