@@ -2265,7 +2265,6 @@ namespace jkj {
 									}
 								}
 								else {
-									static_assert(sizeof(Float) == 8);
 									if (exponent == -203) {
 										goto return_label;
 									}
