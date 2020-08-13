@@ -35,12 +35,12 @@
 // I have no idea why MSVC thinks some functions here are vulnerable to the buffer overrun attacks
 // No, they aren't.
 #ifndef __clang__
-#define JKJ_GRISU_EXACT_SAFEBUFFERS __declspec(safebuffers)
+#define JKJ_SAFEBUFFERS __declspec(safebuffers)
 #else
-#define JKJ_GRISU_EXACT_SAFEBUFFERS
+#define JKJ_SAFEBUFFERS
 #endif
 #else
-#define JKJ_GRISU_EXACT_SAFEBUFFERS
+#define JKJ_SAFEBUFFERS
 #endif
 
 namespace jkj {
@@ -83,7 +83,7 @@ namespace jkj {
 #endif
 		};
 
-		JKJ_GRISU_EXACT_SAFEBUFFERS
+		JKJ_SAFEBUFFERS
 		inline uint128 umul128(std::uint64_t x, std::uint64_t y) noexcept {
 #if defined(_MSC_VER) && defined(_M_X64)
 			uint128 result;
@@ -111,7 +111,7 @@ namespace jkj {
 #endif
 		}
 
-		JKJ_GRISU_EXACT_SAFEBUFFERS
+		JKJ_SAFEBUFFERS
 		inline std::uint64_t umul128_upper64(std::uint64_t x, std::uint64_t y) noexcept {
 #if defined(_MSC_VER) && defined(_M_X64)
 			return __umulh(x, y);
@@ -138,7 +138,7 @@ namespace jkj {
 		}
 
 		// Get upper 64-bits of multiplication of a 64-bit unsigned integer and a 128-bit unsigned integer
-		JKJ_GRISU_EXACT_SAFEBUFFERS
+		JKJ_SAFEBUFFERS
 		inline std::uint64_t umul192_upper64(std::uint64_t x, uint128 y) noexcept {
 			auto g0 = umul128(x, y.high());
 			auto g10 = umul128_upper64(x, y.low());
@@ -1754,7 +1754,7 @@ namespace jkj {
 			//// The main algorithm assumes the input is a normal/subnormal finite number
 
 			template <bool return_sign, class IntervalTypeProvider, class CorrectRoundingSearch>
-			JKJ_GRISU_EXACT_SAFEBUFFERS
+			JKJ_SAFEBUFFERS
 			static fp_t<Float, return_sign> compute(bit_representation_t<Float> br) noexcept
 			{
 				//////////////////////////////////////////////////////////////////////
@@ -2658,5 +2658,5 @@ namespace jkj {
 	}
 }
 
-#undef JKJ_GRISU_EXACT_SAFEBUFFERS
+#undef JKJ_SAFEBUFFERS
 #endif
