@@ -147,8 +147,8 @@ namespace jkj {
 			return uint128{ g0.internal_ + g10 }.high();
 #elif defined(_MSC_VER) && defined(_M_X64)
 			std::uint64_t high, low;
-			auto carry = _addcarryx_u64(0, g0.low(), g10, &low);
-			_addcarryx_u64(carry, g0.high(), 0, &high);
+			auto carry = _addcarry_u64(0, g0.low(), g10, &low);
+			_addcarry_u64(carry, g0.high(), 0, &high);
 			return high;
 #else
 			auto intermediate = g0.low() + g10;
