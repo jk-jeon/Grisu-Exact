@@ -2463,7 +2463,7 @@ namespace jkj {
 						integer_check_exponent_lower_bound_for_q_mp :
 						integer_check_exponent_lower_bound_for_q_mp_m1;
 
-					// Exponent for 2 is positive
+					// Exponent for 2 is negative
 					if (exponent < exp_2_upper_bound) {
 						auto exp_2 = minus_k - exponent;
 						if constexpr (case_id == integer_check_case_id::two_times_fc) {
@@ -2475,7 +2475,7 @@ namespace jkj {
 					else if (exponent <= max_exponent_for_k_geq_0) {
 						return true;
 					}
-					// Exponent for 5 is positive
+					// Exponent for 5 is negative
 					else if (exponent <= integer_check_exponent_upper_bound_for_p_p1) {
 						assert((sizeof(Float) == 4 && 1 <= minus_k && minus_k <= 10) ||
 							(sizeof(Float) == 8 && 1 <= minus_k && minus_k <= 22));
