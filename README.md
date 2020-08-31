@@ -1,3 +1,5 @@
+**There is a better algorithm here: https://github.com/jk-jeon/dragonbox. Please have a look.**
+
 # Grisu-Exact
 This library is a reference implementation of Grisu-Exact in C++.
 
@@ -110,6 +112,7 @@ There are also some MATLAB scripts in the directory [`benchmark_results`](benchm
 
 # Notes
 I also developed an algorithm for the reverse procedure, that is, to convert decimal floating-point numbers into IEEE-754 binary floating-point numbers, using a similar idea. With the assumption of limited precision (at most 9 digits for `float`'s, at most 17 digits for `double`'s), this reverse procedure is actually far simpler than the binary-to-decimal conversion, because we do not need to search for the shortest representation. I ran a joint test of this algorithm and Grisu-Exact, and confirmed that these algorithms successfully round-trip for every single `float`. (Since both of the algorithms are very fast, the whole test takes only less than 2 minutes😉) Therefore, I am very confident about the correctness of both of the algorithms. I will make a separate repository for the reverse algorithm in a near future.
+
 
 # License
 All code, except for those belong to third-party libraries (code in [`benchmark/ryu`](benchmark/ryu) and [`benchmark_results/shaded_plots`](benchmark_results/shaded_plots)), is licensed under either of
