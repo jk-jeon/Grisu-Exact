@@ -1359,7 +1359,7 @@ namespace jkj {
 
 		// Perform correct rounding search; tie-to-odd
 		struct tie_to_odd {
-			static constexpr tag_t tag = tie_to_even_tag;
+			static constexpr tag_t tag = tie_to_odd_tag;
 			template <bool return_sign, class Float, class IntervalTypeProvider>
 			fp_t<Float, return_sign> delegate(bit_representation_t<Float> br,
 				IntervalTypeProvider&&) const
