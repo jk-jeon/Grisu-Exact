@@ -55,7 +55,7 @@ static void benchmark_test(std::string_view float_name,
 	out_file << "number_of_samples," << number_of_uniform_samples << std::endl;;
 	out_file << "name,sample,bit_representation,time\n";
 
-	char buffer[30];
+	char buffer[64];
 	typename jkj::grisu_exact_detail::common_info<Float>::extended_significand_type br;
 	for (auto& name_result_pair : out) {
 		for (auto const& data_time_pair : name_result_pair.second[0]) {
