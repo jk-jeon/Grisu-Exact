@@ -41,12 +41,12 @@ void verify_delta_computation()
 				= grisu_exact_impl<float_type>::compute_mul(fdelta, cache, -common_info<float_type>::gamma);
 
 			auto deltai_fast
-				= grisu_exact_impl<float_type>::compute_delta<jkj::grisu_exact_rounding_modes::to_nearest_tag>(
+				= grisu_exact_impl<float_type>::template compute_delta<jkj::grisu_exact_rounding_modes::to_nearest_tag>(
 					true, cache, -common_info<float_type>::gamma);
 
 			if (deltai_orthodox != deltai_fast) {
-				std::cout << "compute_delta_edge<" << type_name_string
-					<< ">: mismatch! [k = " << k << ", correct deltai = "
+				std::cout << "compute_delta for " << type_name_string
+					<< ": mismatch! [k = " << k << ", correct deltai = "
 					<< deltai_orthodox << ", computed deltai = ("
 					<< deltai_fast << "]\n";
 
