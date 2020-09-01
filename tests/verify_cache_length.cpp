@@ -352,7 +352,7 @@ void verify_cache_length()
 	auto on_each = [&out](auto e, auto required_bits) {
 		out << e << "," << required_bits << std::endl;
 	};
-	auto on_max = [&out](auto max_required_bits) {
+	auto on_max = [](auto max_required_bits) {
 		std::cout << "Maximum required bits: " << max_required_bits << std::endl;
 	};
 

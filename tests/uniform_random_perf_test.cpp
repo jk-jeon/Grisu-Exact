@@ -22,9 +22,6 @@
 template <class Float>
 void uniform_random_perf_test(std::size_t number_of_tests)
 {
-	using extended_significand_type =
-		typename jkj::grisu_exact_detail::common_info<Float>::extended_significand_type;
-
 	char buffer[41];
 	auto rg = generate_correctly_seeded_mt19937_64();
 	for (std::size_t test_idx = 0; test_idx < number_of_tests; ++test_idx) {
